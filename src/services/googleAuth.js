@@ -80,7 +80,7 @@ export function requestGoogleLogin() {
   if (!tokenClient) {
     throw new Error('Google OAuth Client ID is not configured. Please set your Client ID in settings.');
   }
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+  tokenClient.requestAccessToken({ prompt: 'select_account consent' });
 }
 
 export function logoutGoogle() {
