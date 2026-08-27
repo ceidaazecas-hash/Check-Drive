@@ -2,6 +2,8 @@
  * Google OAuth 2.0 Identity Services wrapper with resilient script loading & on-demand initialization
  */
 
+export const TARGET_EMAIL = 'rathanit@limkokwing.edu.kh';
+
 let tokenClient = null;
 let savedClientId = null;
 let savedOnTokenReceived = null;
@@ -94,7 +96,7 @@ export function initGoogleAuth(clientId, onTokenReceived, onError) {
   }
 }
 
-export function requestGoogleLogin(emailHint = '') {
+export function requestGoogleLogin(emailHint = TARGET_EMAIL) {
   if (!tokenClient && savedClientId) {
     initGoogleAuth(savedClientId, savedOnTokenReceived, savedOnError);
   }
@@ -104,8 +106,10 @@ export function requestGoogleLogin(emailHint = '') {
   }
 
   const options = { prompt: 'select_account' };
-  if (emailHint && typeof emailHint === 'string' && emailHint.trim()) {
-    options.hint = emailHint.trim();
+  const targetHint = (typeof emailHint === 'string' && emailHint.trim()) ? emailHint.trim() : TARGET_EMAIL;
+  
+  if (targetHint) {
+    options.hint = targetHint;
   }
 
   tokenClient.requestAccessToken(options);
