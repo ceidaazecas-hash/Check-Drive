@@ -13,9 +13,13 @@ import { scanDriveFolder } from './services/driveApi';
 import { extractDriveFolderId } from './utils/driveUrlParser';
 import { Grid, FileText, FolderTree, Sparkles } from 'lucide-react';
 
+const DEFAULT_CLIENT_ID = '973292062953-al1790ftopifkv22e04srjunqt0diiks.apps.googleusercontent.com';
+
 export default function App() {
   // App state
-  const [clientId, setClientId] = useState(localStorage.getItem('google_oauth_client_id') || '');
+  const [clientId, setClientId] = useState(
+    localStorage.getItem('google_oauth_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID
+  );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [user, setUser] = useState(getCurrentUser());
   const [accessToken, setAccessTokenState] = useState(getAccessToken());
