@@ -103,7 +103,7 @@ export function requestGoogleLogin() {
     throw new Error('Google OAuth Client ID is not initialized yet. Please check your network connection or Client ID settings.');
   }
 
-  tokenClient.requestAccessToken({ prompt: 'select_account consent' });
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
 export function logoutGoogle() {
