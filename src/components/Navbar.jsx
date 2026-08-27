@@ -1,10 +1,11 @@
 import React from 'react';
-import { HardDrive, Settings, LogIn, LogOut, ShieldAlert, RotateCw } from 'lucide-react';
+import { HardDrive, Settings, LogIn, LogOut, ShieldAlert, RotateCw, Calendar } from 'lucide-react';
 
 export default function Navbar({
   user,
   clientId,
   onOpenSettings,
+  onOpenDeadlines,
   onLogin,
   onLogout,
   onForceRefresh,
@@ -43,6 +44,16 @@ export default function Navbar({
               <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${isScanning ? 'animate-spin text-google-blue' : 'text-gray-500'}`} />
               <span className="hidden sm:inline">{isScanning ? 'Refreshing...' : 'Force Refresh'}</span>
               <span className="sm:hidden">{isScanning ? '...' : 'Refresh'}</span>
+            </button>
+
+            {/* Deadline & Schedule Setup Button */}
+            <button
+              onClick={onOpenDeadlines}
+              className="p-2 sm:px-3 sm:py-1.5 rounded-lg border border-amber-200 bg-amber-50/60 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs"
+              title="Configure Week 1-18 date ranges & late submission (L) deadlines"
+            >
+              <Calendar className="w-4 h-4 text-amber-600" />
+              <span className="hidden md:inline">Deadlines & Schedule</span>
             </button>
 
             {/* Client ID Settings Button */}

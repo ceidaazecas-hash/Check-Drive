@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, FileText, Download, Search, Info, ExternalLink } from 'lucide-react';
+import { CheckCircle2, XCircle, Download, Search, Info, Clock, AlertTriangle } from 'lucide-react';
 import { exportMatrixToCSV } from '../utils/csvExporter';
+import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
-export default function SubmissionMatrix({ matrixRows, milestones, rootFolderName }) {
+export default function SubmissionMatrix({ matrixRows, milestones, rootFolderName, weekDeadlines = {}, weekRanges = [] }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'missing', 'completed'
-  const [activeTooltipCell, setActiveTooltipCell] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'missing', 'completed', 'late'
 
   if (!matrixRows || matrixRows.length === 0) return null;
+
+  // Build a lookup map of week range objects
+  const rangeLookup = {};
+  weekRanges.forEach(w => {
+    rangeLookup[w.name] = w;
+  });
 
   // Filter rows by search term and submission status
   const filteredRows = matrixRows.filter(row => {
@@ -30,7 +36,7 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
             Submission Audit Matrix
           </h3>
           <p className="text-xs text-gray-500">
-            Overview of student subfolders vs weekly milestone folders. Identifies submitted files vs empty folders.
+            Overview of student subfolders vs weekly milestones (Week 1–18). Tracks file upload dates and flags late submissions (<span className="text-amber-700 font-bold">L</span>).
           </p>
         </div>
 
@@ -72,17 +78,27 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
 
       {/* Grid Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[750px]">
+        <table className="w-full text-left border-collapse min-w-[850px]">
           <thead>
             <tr className="bg-gray-100/80 text-[11px] font-bold text-gray-700 border-b border-gray-200 uppercase tracking-wider">
               <th className="py-3 px-4 sticky left-0 bg-gray-100 border-r border-gray-200 z-10 w-64 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                 Student Subfolder
               </th>
-              {milestones.map(m => (
-                <th key={m} className="py-3 px-3 border-r border-gray-200 text-center min-w-[110px]">
-                  {m}
-                </th>
-              ))}
+              {milestones.map(m => {
+                const rangeObj = rangeLookup[m];
+                return (
+                  <th key={m} className="py-3 px-3 border-r border-gray-200 text-center min-w-[125px]">
+                    <div className="flex flex-col items-center">
+                      <span>{m}</span>
+                      {rangeObj && (
+                        <span className="text-[9px] font-normal text-gray-500 normal-case mt-0.5">
+                          {rangeObj.formattedRange}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
               <th className="py-3 px-3 text-center min-w-[90px]">Submitted</th>
               <th className="py-3 px-3 text-center min-w-[90px]">Empty</th>
             </tr>
@@ -105,7 +121,7 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
                 {/* Milestone columns */}
                 {milestones.map(milestone => {
                   const cellData = row.submissions[milestone];
-                  const cellKey = `${row.studentName}-${milestone}`;
+                  const deadlineIso = weekDeadlines[milestone];
 
                   if (!cellData) {
                     return (
@@ -126,22 +142,42 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
                     );
                   }
 
-                  // Submitted files
-                  return (
-                    <td key={milestone} className="py-2.5 px-2 text-center border-r border-gray-200 bg-emerald-50/30 relative">
-                      <div className="flex flex-col items-center justify-center">
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span>{cellData.files.length} file{cellData.files.length > 1 ? 's' : ''}</span>
-                        </span>
+                  // Check if files are late
+                  const firstFile = cellData.files[0];
+                  const fileDateIso = firstFile?.dateIso || firstFile?.date;
+                  const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
+                  const isLate = statusInfo.isLate;
 
-                        {/* File detail preview snippet */}
-                        {cellData.files[0] && (
+                  return (
+                    <td key={milestone} className={`py-2.5 px-2 text-center border-r border-gray-200 ${isLate ? 'bg-amber-50/50' : 'bg-emerald-50/30'}`}>
+                      <div className="flex flex-col items-center justify-center">
+                        {isLate ? (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300" title={`Uploaded late after deadline (${statusInfo.daysLate} days late)`}>
+                            <AlertTriangle className="w-3 h-3 text-amber-600" />
+                            <span>{statusInfo.label}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>{cellData.files.length} file{cellData.files.length > 1 ? 's' : ''}</span>
+                          </span>
+                        )}
+
+                        {/* File Name Preview */}
+                        {firstFile && (
                           <span
-                            className="text-[9px] text-gray-500 hover:text-google-blue truncate max-w-[100px] cursor-pointer mt-0.5 block"
-                            title={`${cellData.files[0].name} (${cellData.files[0].date})`}
+                            className="text-[9px] font-medium text-gray-700 hover:text-google-blue truncate max-w-[110px] block mt-1"
+                            title={`${firstFile.name} (Uploaded: ${firstFile.date})`}
                           >
-                            {cellData.files[0].name}
+                            {firstFile.name}
+                          </span>
+                        )}
+
+                        {/* Upload Date & Time */}
+                        {firstFile && firstFile.date && (
+                          <span className="text-[8px] text-gray-500 font-mono flex items-center gap-0.5 mt-0.5">
+                            <Clock className="w-2.5 h-2.5 text-gray-400" />
+                            <span>{firstFile.date}</span>
                           </span>
                         )}
                       </div>
@@ -165,12 +201,23 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
         </table>
       </div>
 
-      {/* Footer hint */}
-      <div className="p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Info className="w-4 h-4 text-google-blue" />
-          <span>Green badges indicate submitted files. Red <span className="font-semibold text-rose-700">Empty</span> badges flag missing work in expected milestone folders.</span>
+      {/* Footer Legend */}
+      <div className="p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <span>Green = On Time Submission</span>
+          </div>
+          <div className="flex items-center space-x-1.5 font-bold text-amber-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span>L = Late Submission</span>
+          </div>
+          <div className="flex items-center space-x-1.5 text-rose-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span>Empty = Missing Work</span>
+          </div>
         </div>
+
         <span className="font-semibold text-gray-700">{filteredRows.length} Student Folders</span>
       </div>
 

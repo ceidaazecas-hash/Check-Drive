@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Navbar from './components/Navbar';
 import DriveUrlInput from './components/DriveUrlInput';
 import StatsCards from './components/StatsCards';
@@ -6,10 +6,12 @@ import SubmissionMatrix from './components/SubmissionMatrix';
 import FileDetailsTable from './components/FileDetailsTable';
 import FolderTreeView from './components/FolderTreeView';
 import ClientIdModal from './components/ClientIdModal';
+import DeadlineSettingsModal from './components/DeadlineSettingsModal';
 
 import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCurrentUser } from './services/googleAuth';
 import { scanDriveFolder } from './services/driveApi';
 import { extractDriveFolderId } from './utils/driveUrlParser';
+import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START } from './utils/weekDeadlineManager';
 import { Grid, FileText, FolderTree, HardDrive, LogIn, Search, CheckCircle2 } from 'lucide-react';
 
 const DEFAULT_CLIENT_ID = '973292062953-al1790ftopifkv22e04srjunqt0diiks.apps.googleusercontent.com';
@@ -20,8 +22,21 @@ export default function App() {
     localStorage.getItem('google_oauth_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID
   );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDeadlinesOpen, setIsDeadlinesOpen] = useState(false);
   const [user, setUser] = useState(getCurrentUser());
   const [accessToken, setAccessTokenState] = useState(getAccessToken());
+
+  // Deadline & Schedule state
+  const [semesterStartDate, setSemesterStartDate] = useState(
+    localStorage.getItem('semester_start_date') || DEFAULT_SEMESTER_START
+  );
+  const [customDeadlines, setCustomDeadlines] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('custom_week_deadlines') || '{}');
+    } catch {
+      return {};
+    }
+  });
 
   const [driveUrl, setDriveUrl] = useState('');
   const [scanDepth, setScanDepth] = useState(4);
@@ -31,8 +46,31 @@ export default function App() {
   const [scanError, setScanError] = useState('');
   const [activeTab, setActiveTab] = useState('matrix'); // 'matrix', 'table', 'tree'
 
-  // Current active audit data (starts null until user scans)
+  // Current active audit data
   const [auditData, setAuditData] = useState(null);
+
+  // Calculate 18 weeks of date ranges
+  const weekRanges = useMemo(() => {
+    return generateDefaultWeekRanges(semesterStartDate);
+  }, [semesterStartDate]);
+
+  // Combine default deadlines with custom deadline overrides
+  const weekDeadlines = useMemo(() => {
+    const map = {};
+    weekRanges.forEach(w => {
+      map[w.name] = customDeadlines[w.name] || w.deadlineIso;
+    });
+    return map;
+  }, [weekRanges, customDeadlines]);
+
+  // Persist deadline changes
+  useEffect(() => {
+    localStorage.setItem('semester_start_date', semesterStartDate);
+  }, [semesterStartDate]);
+
+  useEffect(() => {
+    localStorage.setItem('custom_week_deadlines', JSON.stringify(customDeadlines));
+  }, [customDeadlines]);
 
   // Initialize Google Auth on mount
   useEffect(() => {
@@ -120,6 +158,7 @@ export default function App() {
         user={user}
         clientId={clientId}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenDeadlines={() => setIsDeadlinesOpen(true)}
         onLogin={handleGoogleLogin}
         onLogout={handleGoogleLogout}
         onForceRefresh={() => handleStartScan()}
@@ -163,7 +202,7 @@ export default function App() {
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Google Drive Submission Inspector</h2>
             <p className="text-sm text-gray-600 max-w-lg mx-auto mb-6">
-              Audit student submissions in any Google Drive folder. Automatically inspects nested subfolders to track <strong>who</strong> submitted <strong>what</strong>, <strong>when</strong>, and <strong>where</strong>.
+              Audit student submissions in any Google Drive folder. Automatically inspects nested subfolders to track <strong>who</strong> submitted <strong>what</strong>, <strong>when</strong>, and detect late submissions (<strong>L</strong>).
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left mb-6">
@@ -184,9 +223,9 @@ export default function App() {
               <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
                 <div className="font-bold text-gray-900 mb-1 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  3. Audit Submissions
+                  3. Audit & Track Late (L)
                 </div>
-                <div className="text-gray-500">View matrix overview, missing folders & export to CSV.</div>
+                <div className="text-gray-500">View matrix overview, timestamps, late badges & export to CSV.</div>
               </div>
             </div>
 
@@ -257,6 +296,8 @@ export default function App() {
                 matrixRows={auditData.matrixRows}
                 milestones={auditData.milestones}
                 rootFolderName={auditData.rootFolder?.name}
+                weekDeadlines={weekDeadlines}
+                weekRanges={weekRanges}
               />
             )}
 
@@ -265,6 +306,7 @@ export default function App() {
               <FileDetailsTable
                 files={auditData.files}
                 rootFolderName={auditData.rootFolder?.name}
+                weekDeadlines={weekDeadlines}
               />
             )}
 
@@ -288,6 +330,16 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         clientId={clientId}
         onSaveClientId={handleSaveClientId}
+      />
+
+      {/* Deadline & Schedule Settings Modal */}
+      <DeadlineSettingsModal
+        isOpen={isDeadlinesOpen}
+        onClose={() => setIsDeadlinesOpen(false)}
+        semesterStartDate={semesterStartDate}
+        setSemesterStartDate={setSemesterStartDate}
+        customDeadlines={customDeadlines}
+        setCustomDeadlines={setCustomDeadlines}
       />
 
     </div>

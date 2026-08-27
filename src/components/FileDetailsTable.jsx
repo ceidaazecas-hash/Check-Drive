@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { FileText, Download, ExternalLink, Search, User, Calendar, Folder, ArrowUpDown, Filter } from 'lucide-react';
+import { FileText, Download, ExternalLink, Search, User, Calendar, Folder, ArrowUpDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { exportFilesToCSV } from '../utils/csvExporter';
+import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
-export default function FileDetailsTable({ files, rootFolderName }) {
+export default function FileDetailsTable({ files, rootFolderName, weekDeadlines = {} }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [studentFilter, setStudentFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'on_time', 'late'
   const [sortField, setSortField] = useState('modifiedTime'); // 'name', 'ownerName', 'modifiedTime', 'size'
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -24,6 +26,15 @@ export default function FileDetailsTable({ files, rootFolderName }) {
 
     if (!matchesSearch) return false;
     if (studentFilter !== 'all' && file.studentName !== studentFilter) return false;
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      const deadlineIso = weekDeadlines[file.milestone];
+      const statusInfo = getSubmissionStatus(file.createdTime || file.modifiedTime, deadlineIso);
+      if (statusFilter === 'late' && !statusInfo.isLate) return false;
+      if (statusFilter === 'on_time' && statusInfo.isLate) return false;
+    }
+
     return true;
   });
 
@@ -62,7 +73,7 @@ export default function FileDetailsTable({ files, rootFolderName }) {
             Detailed File Submissions List ({filteredFiles.length})
           </h3>
           <p className="text-xs text-gray-500">
-            Audit who uploaded what document, timestamp, owner email, and exact folder location.
+            Audit file upload timestamps, submitter email, folder location, and late submission (L) status.
           </p>
         </div>
 
@@ -93,6 +104,17 @@ export default function FileDetailsTable({ files, rootFolderName }) {
             </select>
           )}
 
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 font-medium focus:ring-1 focus:ring-google-blue"
+          >
+            <option value="all">All Statuses</option>
+            <option value="on_time">On Time Only</option>
+            <option value="late">Late (L) Only</option>
+          </select>
+
           {/* CSV Export */}
           <button
             onClick={() => exportFilesToCSV(sortedFiles, rootFolderName)}
@@ -106,7 +128,7 @@ export default function FileDetailsTable({ files, rootFolderName }) {
 
       {/* Files Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-gray-100/80 text-[11px] font-bold text-gray-700 border-b border-gray-200 uppercase tracking-wider">
               <th
@@ -132,10 +154,11 @@ export default function FileDetailsTable({ files, rootFolderName }) {
                 className="py-3 px-4 cursor-pointer hover:bg-gray-200/70 transition-colors"
               >
                 <div className="flex items-center space-x-1">
-                  <span>Date & Time</span>
+                  <span>Upload Date & Time</span>
                   <ArrowUpDown className="w-3 h-3 text-gray-400" />
                 </div>
               </th>
+              <th className="py-3 px-4 text-center">Status</th>
               <th className="py-3 px-4">Drive Location Path</th>
               <th
                 onClick={() => toggleSort('size')}
@@ -153,76 +176,96 @@ export default function FileDetailsTable({ files, rootFolderName }) {
           <tbody className="divide-y divide-gray-200 text-xs">
             {sortedFiles.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-500 font-medium">
+                <td colSpan={7} className="py-8 text-center text-gray-500 font-medium">
                   No submission files match your search criteria.
                 </td>
               </tr>
             ) : (
-              sortedFiles.map((file, idx) => (
-                <tr key={file.id || idx} className="hover:bg-blue-50/30 transition-colors">
-                  
-                  {/* File Name */}
-                  <td className="py-3 px-4 font-semibold text-gray-900 max-w-[240px]">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="w-4 h-4 text-google-blue flex-shrink-0" />
-                      <span className="truncate" title={file.name}>{file.name}</span>
-                    </div>
-                  </td>
+              sortedFiles.map((file, idx) => {
+                const deadlineIso = weekDeadlines[file.milestone];
+                const statusInfo = getSubmissionStatus(file.createdTime || file.modifiedTime, deadlineIso);
 
-                  {/* Submitter Owner */}
-                  <td className="py-3 px-4 text-gray-800">
-                    <div className="flex flex-col">
-                      <div className="flex items-center space-x-1.5 font-medium">
-                        <User className="w-3 h-3 text-gray-400" />
-                        <span className="truncate max-w-[150px]">{file.ownerName}</span>
+                return (
+                  <tr key={file.id || idx} className="hover:bg-blue-50/30 transition-colors">
+                    
+                    {/* File Name */}
+                    <td className="py-3 px-4 font-semibold text-gray-900 max-w-[220px]">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-4 h-4 text-google-blue flex-shrink-0" />
+                        <span className="truncate" title={file.name}>{file.name}</span>
                       </div>
-                      {file.ownerEmail && (
-                        <span className="text-[10px] text-gray-400 pl-4 truncate max-w-[150px]">
-                          {file.ownerEmail}
+                    </td>
+
+                    {/* Submitter Owner */}
+                    <td className="py-3 px-4 text-gray-800">
+                      <div className="flex flex-col">
+                        <div className="flex items-center space-x-1.5 font-medium">
+                          <User className="w-3 h-3 text-gray-400" />
+                          <span className="truncate max-w-[140px]">{file.ownerName}</span>
+                        </div>
+                        {file.ownerEmail && (
+                          <span className="text-[10px] text-gray-400 pl-4 truncate max-w-[140px]">
+                            {file.ownerEmail}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Date & Time */}
+                    <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
+                      <div className="flex items-center space-x-1.5 font-mono text-[11px]">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                        <span>{file.modifiedTimeFormatted || file.createdTimeFormatted}</span>
+                      </div>
+                    </td>
+
+                    {/* Status Badge */}
+                    <td className="py-3 px-4 text-center">
+                      {statusInfo.isLate ? (
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                          <AlertTriangle className="w-3 h-3 text-amber-600" />
+                          <span>{statusInfo.label}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>On Time</span>
                         </span>
                       )}
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Date & Time */}
-                  <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
-                    <div className="flex items-center space-x-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      <span>{file.modifiedTimeFormatted || file.createdTimeFormatted}</span>
-                    </div>
-                  </td>
+                    {/* Location / Folder Breadcrumb */}
+                    <td className="py-3 px-4 text-gray-600 max-w-[240px]">
+                      <div className="flex items-center space-x-1.5">
+                        <Folder className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                        <span className="truncate text-[11px]" title={file.folderPath}>
+                          {file.folderPath}
+                        </span>
+                      </div>
+                    </td>
 
-                  {/* Location / Folder Breadcrumb */}
-                  <td className="py-3 px-4 text-gray-600 max-w-[260px]">
-                    <div className="flex items-center space-x-1.5">
-                      <Folder className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                      <span className="truncate text-[11px]" title={file.folderPath}>
-                        {file.folderPath}
-                      </span>
-                    </div>
-                  </td>
+                    {/* File Size */}
+                    <td className="py-3 px-4 text-right text-gray-600 font-mono text-[11px]">
+                      {file.formattedSize}
+                    </td>
 
-                  {/* File Size */}
-                  <td className="py-3 px-4 text-right text-gray-600 font-mono text-[11px]">
-                    {file.formattedSize}
-                  </td>
+                    {/* Direct Link */}
+                    <td className="py-3 px-4 text-center">
+                      <a
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-google-blue hover:text-white text-gray-700 rounded-md text-[11px] font-semibold transition-colors"
+                        title="Open file in Google Drive"
+                      >
+                        <span>Open</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </td>
 
-                  {/* Direct Link */}
-                  <td className="py-3 px-4 text-center">
-                    <a
-                      href={file.webViewLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-google-blue hover:text-white text-gray-700 rounded-md text-[11px] font-semibold transition-colors"
-                      title="Open file in Google Drive"
-                    >
-                      <span>Open</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </td>
-
-                </tr>
-              ))
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
