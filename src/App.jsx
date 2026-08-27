@@ -7,11 +7,10 @@ import FileDetailsTable from './components/FileDetailsTable';
 import FolderTreeView from './components/FolderTreeView';
 import ClientIdModal from './components/ClientIdModal';
 
-import { MOCK_AUDIT_RESULT } from './services/mockDriveData';
 import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCurrentUser } from './services/googleAuth';
 import { scanDriveFolder } from './services/driveApi';
 import { extractDriveFolderId } from './utils/driveUrlParser';
-import { Grid, FileText, FolderTree, Sparkles } from 'lucide-react';
+import { Grid, FileText, FolderTree, HardDrive, LogIn, Search, CheckCircle2 } from 'lucide-react';
 
 const DEFAULT_CLIENT_ID = '973292062953-al1790ftopifkv22e04srjunqt0diiks.apps.googleusercontent.com';
 
@@ -24,8 +23,7 @@ export default function App() {
   const [user, setUser] = useState(getCurrentUser());
   const [accessToken, setAccessTokenState] = useState(getAccessToken());
 
-  const [isDemoMode, setIsDemoMode] = useState(true);
-  const [driveUrl, setDriveUrl] = useState('https://drive.google.com/drive/u/1/folders/1QRHck2OWHZmDuqqZlBJQNHLdc12ts2gu');
+  const [driveUrl, setDriveUrl] = useState('');
   const [scanDepth, setScanDepth] = useState(4);
 
   const [isScanning, setIsScanning] = useState(false);
@@ -33,24 +31,22 @@ export default function App() {
   const [scanError, setScanError] = useState('');
   const [activeTab, setActiveTab] = useState('matrix'); // 'matrix', 'table', 'tree'
 
-  // Current active audit data (starts with demo screenshot data)
-  const [auditData, setAuditData] = useState(MOCK_AUDIT_RESULT);
+  // Current active audit data (starts null until user scans)
+  const [auditData, setAuditData] = useState(null);
 
-  // Initialize Google Auth when Client ID is available
+  // Initialize Google Auth on mount
   useEffect(() => {
-    if (clientId) {
-      initGoogleAuth(
-        clientId,
-        (token, userData) => {
-          setAccessTokenState(token);
-          setUser(userData);
-          setScanError('');
-        },
-        (err) => {
-          setScanError(`Google Auth Error: ${err}`);
-        }
-      );
-    }
+    initGoogleAuth(
+      clientId,
+      (token, userData) => {
+        setAccessTokenState(token);
+        setUser(userData);
+        setScanError('');
+      },
+      (err) => {
+        setScanError(`Google Auth Error: ${err}`);
+      }
+    );
   }, [clientId]);
 
   // Handle saving new Client ID
@@ -65,7 +61,6 @@ export default function App() {
 
   // Google Sign In & Sign Out
   const handleGoogleLogin = () => {
-    setIsDemoMode(false);
     if (!clientId) {
       setIsSettingsOpen(true);
       return;
@@ -81,27 +76,13 @@ export default function App() {
     logoutGoogle();
     setUser(null);
     setAccessTokenState(null);
+    setAuditData(null);
   };
 
-  // Run Drive Scan (or Demo Scan)
+  // Run Drive Scan
   const handleStartScan = async (folderIdOverride) => {
     setScanError('');
     setIsScanning(true);
-
-    if (isDemoMode) {
-      // Simulate network scanning latency for realistic demo UX
-      setScanProgress('Connecting to Drive folder structure...');
-      await new Promise(r => setTimeout(r, 600));
-      setScanProgress('Traversing student subfolders (Chea Bunthay, Hak Venthean, Hor Kimly...)...');
-      await new Promise(r => setTimeout(r, 700));
-      setScanProgress('Extracting owner details, timestamps & file sizes...');
-      await new Promise(r => setTimeout(r, 500));
-      
-      setAuditData(MOCK_AUDIT_RESULT);
-      setIsScanning(false);
-      setScanProgress('');
-      return;
-    }
 
     const folderId = folderIdOverride || extractDriveFolderId(driveUrl);
     if (!folderId) {
@@ -111,8 +92,9 @@ export default function App() {
     }
 
     if (!accessToken) {
-      setScanError('Google authentication token missing. Please sign in to Google.');
+      setScanError('Google authentication required. Click "Sign in with Google" to authorize access.');
       setIsScanning(false);
+      handleGoogleLogin();
       return;
     }
 
@@ -123,7 +105,7 @@ export default function App() {
       setAuditData(result);
     } catch (err) {
       console.error('Scan Error:', err);
-      setScanError(err.message || 'An error occurred while scanning the Google Drive folder.');
+      setScanError(err.message || 'An error occurred while scanning the Google Drive folder. Please check your folder link and permissions.');
     } finally {
       setIsScanning(false);
       setScanProgress('');
@@ -136,8 +118,6 @@ export default function App() {
       {/* Header Navbar */}
       <Navbar
         user={user}
-        isDemoMode={isDemoMode}
-        setIsDemoMode={setIsDemoMode}
         clientId={clientId}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogin={handleGoogleLogin}
@@ -158,7 +138,6 @@ export default function App() {
           onStartScan={handleStartScan}
           isScanning={isScanning}
           scanProgress={scanProgress}
-          isDemoMode={isDemoMode}
           accessToken={accessToken}
           onLogin={handleGoogleLogin}
         />
@@ -173,6 +152,53 @@ export default function App() {
             >
               &times;
             </button>
+          </div>
+        )}
+
+        {/* Welcome Empty State Hero (shown before scanning) */}
+        {!auditData && !isScanning && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm my-6">
+            <div className="w-16 h-16 bg-blue-50 text-google-blue rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
+              <HardDrive className="w-8 h-8 stroke-[2]" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Google Drive Submission Inspector</h2>
+            <p className="text-sm text-gray-600 max-w-lg mx-auto mb-6">
+              Audit student submissions in any Google Drive folder. Automatically inspects nested subfolders to track <strong>who</strong> submitted <strong>what</strong>, <strong>when</strong>, and <strong>where</strong>.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left mb-6">
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
+                <div className="font-bold text-gray-900 mb-1 flex items-center gap-1.5">
+                  <LogIn className="w-3.5 h-3.5 text-google-blue" />
+                  1. Sign In
+                </div>
+                <div className="text-gray-500">Sign in with your Google account to grant read access.</div>
+              </div>
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
+                <div className="font-bold text-gray-900 mb-1 flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5 text-amber-500" />
+                  2. Paste Folder Link
+                </div>
+                <div className="text-gray-500">Paste your class or project folder link into the box above.</div>
+              </div>
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
+                <div className="font-bold text-gray-900 mb-1 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  3. Audit Submissions
+                </div>
+                <div className="text-gray-500">View matrix overview, missing folders & export to CSV.</div>
+              </div>
+            </div>
+
+            {!accessToken && (
+              <button
+                onClick={handleGoogleLogin}
+                className="px-6 py-3 bg-google-blue hover:bg-google-hover text-white rounded-xl text-sm font-bold shadow-md transition-all inline-flex items-center space-x-2"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign in with Google to Start</span>
+              </button>
+            )}
           </div>
         )}
 

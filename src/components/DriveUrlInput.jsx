@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Link2, Play, Layers, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Link2, Play, Layers, AlertCircle } from 'lucide-react';
 import { extractDriveFolderId } from '../utils/driveUrlParser';
 
 export default function DriveUrlInput({
@@ -10,7 +10,6 @@ export default function DriveUrlInput({
   onStartScan,
   isScanning,
   scanProgress,
-  isDemoMode,
   accessToken,
   onLogin
 }) {
@@ -20,19 +19,14 @@ export default function DriveUrlInput({
     e.preventDefault();
     setErrorMsg('');
 
-    if (isDemoMode) {
-      onStartScan();
-      return;
-    }
-
     if (!accessToken) {
-      setErrorMsg('Please sign in with your Google Account first to scan live Drive folders.');
+      onLogin(); // Prompt login instantly
       return;
     }
 
     const folderId = extractDriveFolderId(driveUrl);
     if (!folderId) {
-      setErrorMsg('Invalid Google Drive folder link or ID. Please check the URL format.');
+      setErrorMsg('Invalid Google Drive folder link or ID. Please paste a valid Drive folder URL.');
       return;
     }
 
@@ -84,10 +78,10 @@ export default function DriveUrlInput({
                 setErrorMsg('');
               }}
               placeholder="e.g. https://drive.google.com/drive/u/1/folders/1QRHck2OWHZmDuqqZlBJQNHL..."
-              disabled={isScanning || isDemoMode}
+              disabled={isScanning}
               className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border rounded-xl text-xs sm:text-sm text-gray-900 focus:bg-white focus:ring-2 focus:ring-google-blue focus:border-google-blue transition-colors ${
                 errorMsg ? 'border-red-400 focus:ring-red-400' : 'border-gray-300'
-              } ${isDemoMode ? 'opacity-75 bg-amber-50/50' : ''}`}
+              }`}
             />
           </div>
 
@@ -115,8 +109,6 @@ export default function DriveUrlInput({
             className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white flex items-center justify-center space-x-2 shadow-sm transition-all whitespace-nowrap ${
               isScanning
                 ? 'bg-google-blue/70 cursor-wait'
-                : isDemoMode
-                ? 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'
                 : 'bg-google-blue hover:bg-google-hover focus:ring-google-blue'
             }`}
           >
@@ -131,25 +123,15 @@ export default function DriveUrlInput({
             ) : (
               <>
                 <Play className="w-4 h-4 fill-white" />
-                <span>{isDemoMode ? 'Analyze Demo Data' : 'Inspect Submissions'}</span>
+                <span>Inspect Submissions</span>
               </>
             )}
           </button>
 
         </div>
 
-        {/* Demo Mode notification */}
-        {isDemoMode && (
-          <div className="flex items-center space-x-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-            <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            <span>
-              <strong>Demo Mode active:</strong> Analyzing mock data modeled on your Google Drive screenshots (*June 2026 Semester &gt; Major Project 2*).
-            </span>
-          </div>
-        )}
-
         {/* Live login required notification */}
-        {!isDemoMode && !accessToken && (
+        {!accessToken && (
           <div className="flex items-center justify-between text-xs text-blue-900 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
             <div className="flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 text-google-blue flex-shrink-0" />

@@ -1,10 +1,8 @@
 import React from 'react';
-import { HardDrive, Settings, LogIn, LogOut, Sparkles, ShieldAlert, RotateCw } from 'lucide-react';
+import { HardDrive, Settings, LogIn, LogOut, ShieldAlert, RotateCw } from 'lucide-react';
 
 export default function Navbar({
   user,
-  isDemoMode,
-  setIsDemoMode,
   clientId,
   onOpenSettings,
   onLogin,
@@ -23,14 +21,7 @@ export default function Navbar({
               <HardDrive className="w-6 h-6 stroke-[2.2]" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-bold text-gray-900 tracking-tight">Drive Submission Inspector</h1>
-                {isDemoMode && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                    <Sparkles className="w-3 h-3 mr-1" /> Demo Mode
-                  </span>
-                )}
-              </div>
+              <h1 className="text-lg font-bold text-gray-900 tracking-tight">Drive Submission Inspector</h1>
               <p className="text-xs text-gray-500 hidden sm:block">Track who submitted what, when & where in Google Drive</p>
             </div>
           </div>
@@ -52,21 +43,6 @@ export default function Navbar({
               <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${isScanning ? 'animate-spin text-google-blue' : 'text-gray-500'}`} />
               <span className="hidden sm:inline">{isScanning ? 'Refreshing...' : 'Force Refresh'}</span>
               <span className="sm:hidden">{isScanning ? '...' : 'Refresh'}</span>
-            </button>
-
-            {/* Demo Mode Toggle */}
-            <button
-              onClick={() => setIsDemoMode(!isDemoMode)}
-              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                isDemoMode
-                  ? 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
-                  : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
-              }`}
-              title="Toggle Demo Mode with pre-loaded dataset from screenshots"
-            >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-              <span className="hidden md:inline">{isDemoMode ? 'Demo Active' : 'Switch to Demo'}</span>
-              <span className="md:hidden">Demo</span>
             </button>
 
             {/* Client ID Settings Button */}
