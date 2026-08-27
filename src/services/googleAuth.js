@@ -94,7 +94,7 @@ export function initGoogleAuth(clientId, onTokenReceived, onError) {
   }
 }
 
-export function requestGoogleLogin() {
+export function requestGoogleLogin(emailHint = '') {
   if (!tokenClient && savedClientId) {
     initGoogleAuth(savedClientId, savedOnTokenReceived, savedOnError);
   }
@@ -103,7 +103,12 @@ export function requestGoogleLogin() {
     throw new Error('Google OAuth Client ID is not initialized yet. Please check your network connection or Client ID settings.');
   }
 
-  tokenClient.requestAccessToken({ prompt: 'select_account' });
+  const options = { prompt: 'select_account' };
+  if (emailHint && typeof emailHint === 'string' && emailHint.trim()) {
+    options.hint = emailHint.trim();
+  }
+
+  tokenClient.requestAccessToken(options);
 }
 
 export function logoutGoogle() {
