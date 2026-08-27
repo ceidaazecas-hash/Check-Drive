@@ -137,6 +137,8 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogin={handleGoogleLogin}
         onLogout={handleGoogleLogout}
+        onForceRefresh={() => handleStartScan()}
+        isScanning={isScanning}
       />
 
       {/* Main Container */}

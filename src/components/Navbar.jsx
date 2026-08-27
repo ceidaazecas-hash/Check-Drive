@@ -1,5 +1,5 @@
 import React from 'react';
-import { HardDrive, Settings, LogIn, LogOut, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { HardDrive, Settings, LogIn, LogOut, Sparkles, ShieldAlert, RotateCw } from 'lucide-react';
 
 export default function Navbar({
   user,
@@ -8,7 +8,9 @@ export default function Navbar({
   clientId,
   onOpenSettings,
   onLogin,
-  onLogout
+  onLogout,
+  onForceRefresh,
+  isScanning
 }) {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
@@ -34,7 +36,23 @@ export default function Navbar({
           </div>
 
           {/* Controls & Actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+
+            {/* Force Refresh Button */}
+            <button
+              onClick={onForceRefresh}
+              disabled={isScanning}
+              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-sm ${
+                isScanning
+                  ? 'bg-blue-50 text-google-blue border-blue-200 cursor-wait'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-blue-50 hover:text-google-blue hover:border-blue-300'
+              }`}
+              title="Force refresh Google Drive folder scan to pull latest changes"
+            >
+              <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${isScanning ? 'animate-spin text-google-blue' : 'text-gray-500 group-hover:text-google-blue'}`} />
+              <span className="hidden sm:inline">{isScanning ? 'Refreshing...' : 'Force Refresh'}</span>
+              <span className="sm:hidden">{isScanning ? '...' : 'Refresh'}</span>
+            </button>
 
             {/* Demo Mode Toggle */}
             <button
@@ -47,7 +65,8 @@ export default function Navbar({
               title="Toggle Demo Mode with pre-loaded dataset from screenshots"
             >
               <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-              {isDemoMode ? 'Demo Active' : 'Switch to Demo'}
+              <span className="hidden md:inline">{isDemoMode ? 'Demo Active' : 'Switch to Demo'}</span>
+              <span className="md:hidden">{isDemoMode ? 'Demo' : 'Demo'}</span>
             </button>
 
             {/* Client ID Settings Button */}
@@ -97,7 +116,7 @@ export default function Navbar({
                 title={isDemoMode ? 'Switch off Demo Mode to sign in' : 'Sign in with your Google Account'}
               >
                 <LogIn className="w-4 h-4" />
-                <span>Sign in with Google</span>
+                <span className="hidden sm:inline">Sign in with Google</span>
               </button>
             )}
 
