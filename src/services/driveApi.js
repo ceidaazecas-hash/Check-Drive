@@ -71,7 +71,6 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
   };
 
   const submitterEmails = new Set();
-  const studentFolderNodes = [];
 
   // Recursive tree crawler
   async function crawlFolder(currentFolderId, currentPath, currentDepth, studentName = '') {
@@ -159,7 +158,7 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
   folderStats.studentFoldersCount = firstLevelFolders.length;
   folderStats.uniqueSubmittersCount = submitterEmails.size;
 
-  // Build matrix rows and column headers (weeks / milestones)
+  // Build matrix rows and column headers (weeks / milestones / categories)
   const milestoneSet = new Set();
   const matrixRows = firstLevelFolders.map(studentNode => {
     const studentName = studentNode.name;
@@ -167,14 +166,17 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
     let studentSubmittedCount = 0;
     let studentEmptyCount = 0;
 
-    // Collect all sub-leaf folders under this student
-    function collectMilestones(node, parentTopic = '') {
+    // Collect all leaf subfolders and folders containing files under this student
+    function collectMilestones(node) {
       if (node.type === 'folder') {
-        if (node.children.length === 0 || node.children.some(c => c.type === 'file')) {
+        const subfolderChildren = node.children.filter(c => c.type === 'folder');
+        const fileChildren = node.children.filter(c => c.type === 'file');
+
+        // If this folder has no child subfolders OR contains direct files, it is a milestone column!
+        if (subfolderChildren.length === 0 || fileChildren.length > 0) {
           const colName = node.name.replace(/\s*\(EMPTY\)/i, '');
           milestoneSet.add(colName);
-          const files = node.children.filter(c => c.type === 'file');
-          const isFolderEmpty = files.length === 0;
+          const isFolderEmpty = fileChildren.length === 0;
 
           if (isFolderEmpty) studentEmptyCount++;
           else studentSubmittedCount++;
@@ -182,15 +184,16 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
           submissions[colName] = {
             isFolderEmpty,
             folderPath: node.name,
-            files: files.map(f => ({ name: f.name, date: f.time, owner: f.owner, link: f.webViewLink }))
+            files: fileChildren.map(f => ({ name: f.name, date: f.time, owner: f.owner, link: f.webViewLink }))
           };
-        } else {
-          node.children.forEach(c => collectMilestones(c, node.name));
         }
+
+        // Always recurse into child subfolders to capture all nested milestone folders
+        subfolderChildren.forEach(childFolder => collectMilestones(childFolder));
       }
     }
 
-    studentNode.children.forEach(c => collectMilestones(c, studentNode.name));
+    studentNode.children.forEach(c => collectMilestones(c));
 
     return {
       studentName,

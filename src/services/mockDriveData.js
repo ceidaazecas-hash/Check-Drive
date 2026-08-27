@@ -3,7 +3,7 @@
  * Screenshots show:
  * - Root folder: "Major Project 2 - June 2026 Semester"
  * - Student folders: "Chea Bunthay - Major...", "Hak Venthean - Major...", "Hor Kimly - Major...", etc.
- * - Subfolders: "Concept Note (Week 2 - 4)", "Progress Report (Week 5 - 8)", "All Final Material"
+ * - Subfolders: "All Final Material", "Concept Note (Week 2 - 4)", "Progress Report (Week 5 - 8)"
  * - Week subfolders: "Week 2" (Empty state as in Screenshot 4), "Week 7" (File: "Progress Week7.docx" as in Screenshot 1)
  */
 
@@ -21,16 +21,34 @@ export const MOCK_AUDIT_RESULT = {
   rootFolder: MOCK_ROOT_FOLDER,
   scannedAt: new Date().toISOString(),
   stats: {
-    totalFoldersScanned: 42,
+    totalFoldersScanned: 48,
     studentFoldersCount: 8,
-    totalFilesFound: 28,
-    submittedFoldersCount: 22,
-    emptyFoldersCount: 12,
+    totalFilesFound: 30,
+    submittedFoldersCount: 24,
+    emptyFoldersCount: 14,
     uniqueSubmittersCount: 8
   },
   // Detailed file list
   files: [
     // Chea Bunthay
+    {
+      id: 'file_000',
+      name: 'Chea_Bunthay_Final_Project_Package.zip',
+      mimeType: 'application/zip',
+      size: 15400000,
+      formattedSize: '14.7 MB',
+      createdTime: '2026-08-27T10:00:00.000Z',
+      createdTimeFormatted: 'Aug 27, 2026 10:00 AM',
+      modifiedTime: '2026-08-27T10:00:00.000Z',
+      modifiedTimeFormatted: 'Aug 27, 2026 10:00 AM',
+      ownerName: 'Chea Bunthay',
+      ownerEmail: 'chea.bunthay@student.edu.kh',
+      lastModifiedBy: 'Chea Bunthay',
+      folderPath: 'Major Project 2 > Chea Bunthay > All Final Material',
+      studentName: 'Chea Bunthay',
+      milestone: 'All Final Material',
+      webViewLink: 'https://drive.google.com'
+    },
     {
       id: 'file_001',
       name: 'Progress Week7.docx',
@@ -183,8 +201,8 @@ export const MOCK_AUDIT_RESULT = {
     }
   ],
 
-  // Columns / Milestones for Submission Matrix
-  milestones: ['Week 2', 'Week 3', 'Week 4', 'Final Concept', 'Week 5', 'Week 6', 'Week 7'],
+  // Columns / Milestones for Submission Matrix (Includes top-level folders & all weeks)
+  milestones: ['All Final Material', 'Week 2', 'Week 3', 'Week 4', 'Final Concept', 'Week 5', 'Week 6', 'Week 7', 'Week 8'],
 
   // Matrix rows (per student)
   matrixRows: [
@@ -192,16 +210,18 @@ export const MOCK_AUDIT_RESULT = {
       studentName: 'Chea Bunthay',
       email: 'chea.bunthay@student.edu.kh',
       folderPath: 'Major Project 2 > Chea Bunthay - Major Project 2',
-      submittedCount: 4,
-      emptyCount: 3,
+      submittedCount: 5,
+      emptyCount: 4,
       submissions: {
-        'Week 2': { isFolderEmpty: true, folderPath: '... > Concept Note > Week 2', files: [] }, // Empty as in Screenshot 4!
+        'All Final Material': { isFolderEmpty: false, folderPath: '... > All Final Material', files: [{ name: 'Chea_Bunthay_Final_Project_Package.zip', date: 'Aug 27, 2026', owner: 'Chea Bunthay' }] },
+        'Week 2': { isFolderEmpty: true, folderPath: '... > Concept Note > Week 2', files: [] },
         'Week 3': { isFolderEmpty: false, folderPath: '... > Concept Note > Week 3', files: [{ name: 'Concept_Note_Week3_Draft.docx', date: 'Jul 15, 2026', owner: 'Chea Bunthay' }] },
         'Week 4': { isFolderEmpty: true, folderPath: '... > Concept Note > Week 4', files: [] },
         'Final Concept': { isFolderEmpty: false, folderPath: '... > Concept Note > Final Concept', files: [{ name: 'Concept_Note_Final_Approved.pdf', date: 'Jul 28, 2026', owner: 'Chea Bunthay' }] },
         'Week 5': { isFolderEmpty: false, folderPath: '... > Progress Report > Week 5', files: [{ name: 'Progress_Week5.docx', date: 'Aug 12, 2026', owner: 'Chea Bunthay' }] },
         'Week 6': { isFolderEmpty: true, folderPath: '... > Progress Report > Week 6', files: [] },
-        'Week 7': { isFolderEmpty: false, folderPath: '... > Progress Report > Week 7', files: [{ name: 'Progress Week7.docx', date: 'Aug 26, 2026', owner: 'Chea Bunthay' }] } // Screenshot 1
+        'Week 7': { isFolderEmpty: false, folderPath: '... > Progress Report > Week 7', files: [{ name: 'Progress Week7.docx', date: 'Aug 26, 2026', owner: 'Chea Bunthay' }] },
+        'Week 8': { isFolderEmpty: true, folderPath: '... > Progress Report > Week 8', files: [] }
       }
     },
     {
@@ -209,15 +229,17 @@ export const MOCK_AUDIT_RESULT = {
       email: 'hak.venthean@student.edu.kh',
       folderPath: 'Major Project 2 > Hak Venthean - Major Project 2',
       submittedCount: 2,
-      emptyCount: 5,
+      emptyCount: 7,
       submissions: {
+        'All Final Material': { isFolderEmpty: true, files: [] },
         'Week 2': { isFolderEmpty: false, folderPath: '... > Concept Note > Week 2', files: [{ name: 'Concept_Note_Week2_HV.docx', date: 'Jul 8, 2026', owner: 'Hak Venthean' }] },
         'Week 3': { isFolderEmpty: true, files: [] },
         'Week 4': { isFolderEmpty: true, files: [] },
         'Final Concept': { isFolderEmpty: true, files: [] },
         'Week 5': { isFolderEmpty: true, files: [] },
         'Week 6': { isFolderEmpty: true, files: [] },
-        'Week 7': { isFolderEmpty: false, folderPath: '... > Progress Report > Week 7', files: [{ name: 'Hak_Venthean_Progress_Week7.pdf', date: 'Aug 25, 2026', owner: 'Hak Venthean' }] }
+        'Week 7': { isFolderEmpty: false, folderPath: '... > Progress Report > Week 7', files: [{ name: 'Hak_Venthean_Progress_Week7.pdf', date: 'Aug 25, 2026', owner: 'Hak Venthean' }] },
+        'Week 8': { isFolderEmpty: true, files: [] }
       }
     },
     {
@@ -225,15 +247,17 @@ export const MOCK_AUDIT_RESULT = {
       email: 'hor.kimly@student.edu.kh',
       folderPath: 'Major Project 2 > Hor Kimly - Major Project 2',
       submittedCount: 1,
-      emptyCount: 6,
+      emptyCount: 8,
       submissions: {
+        'All Final Material': { isFolderEmpty: true, files: [] },
         'Week 2': { isFolderEmpty: true, files: [] },
         'Week 3': { isFolderEmpty: true, files: [] },
         'Week 4': { isFolderEmpty: true, files: [] },
         'Final Concept': { isFolderEmpty: false, files: [{ name: 'Hor_Kimly_Concept_Note.pdf', date: 'Jul 10, 2026', owner: 'Hor Kimly' }] },
         'Week 5': { isFolderEmpty: true, files: [] },
         'Week 6': { isFolderEmpty: true, files: [] },
-        'Week 7': { isFolderEmpty: true, files: [] }
+        'Week 7': { isFolderEmpty: true, files: [] },
+        'Week 8': { isFolderEmpty: true, files: [] }
       }
     },
     {
@@ -241,15 +265,17 @@ export const MOCK_AUDIT_RESULT = {
       email: 'hour.chansopheak@student.edu.kh',
       folderPath: 'Major Project 2 > Hour Chansopheak - Major Project 2',
       submittedCount: 1,
-      emptyCount: 6,
+      emptyCount: 8,
       submissions: {
+        'All Final Material': { isFolderEmpty: true, files: [] },
         'Week 2': { isFolderEmpty: true, files: [] },
         'Week 3': { isFolderEmpty: true, files: [] },
         'Week 4': { isFolderEmpty: true, files: [] },
         'Final Concept': { isFolderEmpty: true, files: [] },
         'Week 5': { isFolderEmpty: true, files: [] },
         'Week 6': { isFolderEmpty: true, files: [] },
-        'Week 7': { isFolderEmpty: false, files: [{ name: 'Chansopheak_Week7_Report.docx', date: 'Aug 26, 2026', owner: 'Hour Chansopheak' }] }
+        'Week 7': { isFolderEmpty: false, files: [{ name: 'Chansopheak_Week7_Report.docx', date: 'Aug 26, 2026', owner: 'Hour Chansopheak' }] },
+        'Week 8': { isFolderEmpty: true, files: [] }
       }
     },
     {
@@ -257,15 +283,17 @@ export const MOCK_AUDIT_RESULT = {
       email: 'hout.chanmonyroth@student.edu.kh',
       folderPath: 'Major Project 2 > Hout Chanmonyroth - Major Project 2',
       submittedCount: 0,
-      emptyCount: 7,
+      emptyCount: 9,
       submissions: {
+        'All Final Material': { isFolderEmpty: true, files: [] },
         'Week 2': { isFolderEmpty: true, files: [] },
         'Week 3': { isFolderEmpty: true, files: [] },
         'Week 4': { isFolderEmpty: true, files: [] },
         'Final Concept': { isFolderEmpty: true, files: [] },
         'Week 5': { isFolderEmpty: true, files: [] },
         'Week 6': { isFolderEmpty: true, files: [] },
-        'Week 7': { isFolderEmpty: true, files: [] }
+        'Week 7': { isFolderEmpty: true, files: [] },
+        'Week 8': { isFolderEmpty: true, files: [] }
       }
     },
     {
@@ -273,15 +301,17 @@ export const MOCK_AUDIT_RESULT = {
       email: 'hov.chanbo@student.edu.kh',
       folderPath: 'Major Project 2 > Hov Chanbo - Major Project 2',
       submittedCount: 0,
-      emptyCount: 7,
+      emptyCount: 9,
       submissions: {
+        'All Final Material': { isFolderEmpty: true, files: [] },
         'Week 2': { isFolderEmpty: true, files: [] },
         'Week 3': { isFolderEmpty: true, files: [] },
         'Week 4': { isFolderEmpty: true, files: [] },
         'Final Concept': { isFolderEmpty: true, files: [] },
         'Week 5': { isFolderEmpty: true, files: [] },
         'Week 6': { isFolderEmpty: true, files: [] },
-        'Week 7': { isFolderEmpty: true, files: [] }
+        'Week 7': { isFolderEmpty: true, files: [] },
+        'Week 8': { isFolderEmpty: true, files: [] }
       }
     },
     {
@@ -289,15 +319,17 @@ export const MOCK_AUDIT_RESULT = {
       email: 'khiev.piseth@student.edu.kh',
       folderPath: 'Major Project 2 > Khiev Piseth - Major Project 2',
       submittedCount: 0,
-      emptyCount: 7,
+      emptyCount: 9,
       submissions: {
+        'All Final Material': { isFolderEmpty: true, files: [] },
         'Week 2': { isFolderEmpty: true, files: [] },
         'Week 3': { isFolderEmpty: true, files: [] },
         'Week 4': { isFolderEmpty: true, files: [] },
         'Final Concept': { isFolderEmpty: true, files: [] },
         'Week 5': { isFolderEmpty: true, files: [] },
         'Week 6': { isFolderEmpty: true, files: [] },
-        'Week 7': { isFolderEmpty: true, files: [] }
+        'Week 7': { isFolderEmpty: true, files: [] },
+        'Week 8': { isFolderEmpty: true, files: [] }
       }
     },
     {
@@ -305,15 +337,17 @@ export const MOCK_AUDIT_RESULT = {
       email: 'leak.sithisak@student.edu.kh',
       folderPath: 'Major Project 2 > Leak Sithisak - Major Project 2',
       submittedCount: 0,
-      emptyCount: 7,
+      emptyCount: 9,
       submissions: {
+        'All Final Material': { isFolderEmpty: true, files: [] },
         'Week 2': { isFolderEmpty: true, files: [] },
         'Week 3': { isFolderEmpty: true, files: [] },
         'Week 4': { isFolderEmpty: true, files: [] },
         'Final Concept': { isFolderEmpty: true, files: [] },
         'Week 5': { isFolderEmpty: true, files: [] },
         'Week 6': { isFolderEmpty: true, files: [] },
-        'Week 7': { isFolderEmpty: true, files: [] }
+        'Week 7': { isFolderEmpty: true, files: [] },
+        'Week 8': { isFolderEmpty: true, files: [] }
       }
     }
   ],
@@ -327,6 +361,13 @@ export const MOCK_AUDIT_RESULT = {
         name: 'Chea Bunthay - Major Project 2',
         type: 'folder',
         children: [
+          {
+            name: 'All Final Material',
+            type: 'folder',
+            children: [
+              { name: 'Chea_Bunthay_Final_Project_Package.zip', type: 'file', owner: 'Chea Bunthay', time: 'Aug 27, 2026' }
+            ]
+          },
           {
             name: 'Concept Note (Week 2 - 4)',
             type: 'folder',
@@ -367,16 +408,17 @@ export const MOCK_AUDIT_RESULT = {
                 children: [
                   { name: 'Progress Week7.docx', type: 'file', owner: 'Chea Bunthay', time: 'Aug 26, 2026' }
                 ]
-              }
+              },
+              { name: 'Week 8 (EMPTY)', type: 'folder', isEmpty: true, children: [] }
             ]
-          },
-          { name: 'All Final Material (EMPTY)', type: 'folder', isEmpty: true, children: [] }
+          }
         ]
       },
       {
         name: 'Hak Venthean - Major Project 2',
         type: 'folder',
         children: [
+          { name: 'All Final Material (EMPTY)', type: 'folder', isEmpty: true, children: [] },
           {
             name: 'Concept Note (Week 2 - 4)',
             type: 'folder',
