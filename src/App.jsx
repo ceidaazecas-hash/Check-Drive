@@ -120,21 +120,24 @@ export default function App() {
   // Run Drive Scan
   const handleStartScan = async (folderIdOverride) => {
     setScanError('');
-    setIsScanning(true);
 
-    const folderId = folderIdOverride || extractDriveFolderId(driveUrl);
+    // Determine target folder ID: passed override, parsed input driveUrl, or existing scanned root folder ID
+    const folderId = (typeof folderIdOverride === 'string' && folderIdOverride)
+      ? folderIdOverride
+      : extractDriveFolderId(driveUrl) || auditData?.rootFolder?.id;
+
     if (!folderId) {
-      setScanError('Please enter a valid Google Drive folder URL or Folder ID.');
-      setIsScanning(false);
+      setScanError('Please paste a Google Drive folder link in the box above to inspect.');
       return;
     }
 
     if (!accessToken) {
       setScanError('Google authentication required. Click "Sign in with Google" to authorize access.');
-      setIsScanning(false);
       handleGoogleLogin();
       return;
     }
+
+    setIsScanning(true);
 
     try {
       const result = await scanDriveFolder(folderId, accessToken, scanDepth, (statusMsg) => {
