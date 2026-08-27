@@ -49,7 +49,7 @@ export default function Navbar({
               }`}
               title="Force refresh Google Drive folder scan to pull latest changes"
             >
-              <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${isScanning ? 'animate-spin text-google-blue' : 'text-gray-500 group-hover:text-google-blue'}`} />
+              <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${isScanning ? 'animate-spin text-google-blue' : 'text-gray-500'}`} />
               <span className="hidden sm:inline">{isScanning ? 'Refreshing...' : 'Force Refresh'}</span>
               <span className="sm:hidden">{isScanning ? '...' : 'Refresh'}</span>
             </button>
@@ -66,7 +66,7 @@ export default function Navbar({
             >
               <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
               <span className="hidden md:inline">{isDemoMode ? 'Demo Active' : 'Switch to Demo'}</span>
-              <span className="md:hidden">{isDemoMode ? 'Demo' : 'Demo'}</span>
+              <span className="md:hidden">Demo</span>
             </button>
 
             {/* Client ID Settings Button */}
@@ -107,13 +107,8 @@ export default function Navbar({
             ) : (
               <button
                 onClick={onLogin}
-                disabled={isDemoMode}
-                className={`inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-all shadow-sm ${
-                  isDemoMode
-                    ? 'bg-gray-300 cursor-not-allowed'
-                    : 'bg-google-blue hover:bg-google-hover focus:ring-2 focus:ring-google-blue focus:ring-offset-1'
-                }`}
-                title={isDemoMode ? 'Switch off Demo Mode to sign in' : 'Sign in with your Google Account'}
+                className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-google-blue hover:bg-google-hover focus:ring-2 focus:ring-google-blue focus:ring-offset-1 transition-all shadow-sm cursor-pointer"
+                title="Sign in with your Google Account"
               >
                 <LogIn className="w-4 h-4" />
                 <span className="hidden sm:inline">Sign in with Google</span>

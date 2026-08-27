@@ -65,6 +65,7 @@ export default function App() {
 
   // Google Sign In & Sign Out
   const handleGoogleLogin = () => {
+    setIsDemoMode(false);
     if (!clientId) {
       setIsSettingsOpen(true);
       return;

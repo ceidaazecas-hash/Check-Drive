@@ -1,8 +1,12 @@
 /**
- * Google OAuth 2.0 Identity Services wrapper
+ * Google OAuth 2.0 Identity Services wrapper with resilient script loading & on-demand initialization
  */
 
 let tokenClient = null;
+let savedClientId = null;
+let savedOnTokenReceived = null;
+let savedOnError = null;
+
 let accessToken = localStorage.getItem('google_drive_access_token') || null;
 let currentUser = JSON.parse(localStorage.getItem('google_drive_user') || 'null');
 
@@ -24,23 +28,37 @@ export function setAccessToken(token) {
 }
 
 export function initGoogleAuth(clientId, onTokenReceived, onError) {
-  if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-    console.warn('Google Identity Services script not loaded yet.');
+  if (clientId) savedClientId = clientId;
+  if (onTokenReceived) savedOnTokenReceived = onTokenReceived;
+  if (onError) savedOnError = onError;
+
+  const targetClientId = clientId || savedClientId;
+
+  if (!targetClientId) {
     return null;
   }
 
-  if (!clientId) {
+  // Check if Google GSI library is loaded
+  if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+    console.warn('Google Identity Services script loading... retrying initialization.');
+    // Poll until window.google is ready
+    const checkInterval = setInterval(() => {
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        clearInterval(checkInterval);
+        initGoogleAuth(targetClientId, savedOnTokenReceived, savedOnError);
+      }
+    }, 200);
     return null;
   }
 
   try {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
+      client_id: targetClientId,
       scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
       callback: async (response) => {
         if (response.error) {
           console.error('Google OAuth Error:', response);
-          if (onError) onError(response.error);
+          if (savedOnError) savedOnError(response.error);
           return;
         }
 
@@ -65,7 +83,7 @@ export function initGoogleAuth(clientId, onTokenReceived, onError) {
           console.warn('Could not fetch user profile details', e);
         }
 
-        if (onTokenReceived) onTokenReceived(token, currentUser);
+        if (savedOnTokenReceived) savedOnTokenReceived(token, currentUser);
       },
     });
 
@@ -77,9 +95,14 @@ export function initGoogleAuth(clientId, onTokenReceived, onError) {
 }
 
 export function requestGoogleLogin() {
-  if (!tokenClient) {
-    throw new Error('Google OAuth Client ID is not configured. Please set your Client ID in settings.');
+  if (!tokenClient && savedClientId) {
+    initGoogleAuth(savedClientId, savedOnTokenReceived, savedOnError);
   }
+
+  if (!tokenClient) {
+    throw new Error('Google OAuth Client ID is not initialized yet. Please check your network connection or Client ID settings.');
+  }
+
   tokenClient.requestAccessToken({ prompt: 'select_account consent' });
 }
 
