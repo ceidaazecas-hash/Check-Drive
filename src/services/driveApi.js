@@ -1,7 +1,7 @@
 import { formatBytes, formatDate } from '../utils/driveUrlParser';
 
 /**
- * High-Speed Google Drive API v3 Batch Crawler with Multi-Parent Batching
+ * High-Speed Google Drive API v3 Batch Crawler with Multi-Parent Batching & Hierarchical Milestone Grouping
  */
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
@@ -112,7 +112,7 @@ export async function listMultiFolderChildren(folderIds, accessToken, abortSigna
 }
 
 /**
- * Ultra-Fast Level-by-Level Batch Crawler
+ * Ultra-Fast Level-by-Level Batch Crawler with Hierarchical Grouping
  */
 export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, progressCallback = null, abortSignal = null) {
   const rootMeta = await getFolderMetadata(rootFolderId, accessToken, abortSignal);
@@ -128,7 +128,7 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
   };
 
   const submitterEmails = new Set();
-  const folderMap = new Map(); // id -> { id, name, path, parentId, studentName, childrenFolders: [], files: [] }
+  const folderMap = new Map();
 
   folderMap.set(rootFolderId, {
     id: rootFolderId,
@@ -158,7 +158,6 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
 
     if (currentLevelFolderIds.length === 0) break;
 
-    // Fetch all children of all folders at this level in parallel batches!
     const childrenItems = await listMultiFolderChildren(currentLevelFolderIds, accessToken, abortSignal);
     const nextLevelFolderIds = [];
 
@@ -178,7 +177,6 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
         folderStats.totalFoldersScanned++;
         const itemPath = `${parentPath} > ${item.name}`;
         
-        // If this is Level 1 under root, this is a student folder!
         const studentName = (depth === 1)
           ? item.name.replace(/ - (Major|Computer|Assignment).*$/, '').trim()
           : parentStudent;
@@ -267,7 +265,61 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
   folderStats.studentFoldersCount = firstLevelFolders.length;
   folderStats.uniqueSubmittersCount = submitterEmails.size;
 
-  const allLeafMilestones = new Set();
+  // Build Hierarchical Category & Subfolder Groups
+  // e.g. { "Concept Note (Week 2 - 4)": ["Document", "Final Concept"] }
+  const categoryGroupsMap = new Map(); // categoryName -> Set of subfolderNames
+
+  // Discover all category groups across all students
+  for (const studentFolder of firstLevelFolders) {
+    for (const catFolder of studentFolder.childrenFolders) {
+      const catName = catFolder.name;
+      if (!categoryGroupsMap.has(catName)) {
+        categoryGroupsMap.set(catName, new Set());
+      }
+      const subSet = categoryGroupsMap.get(catName);
+
+      if (catFolder.childrenFolders.length > 0) {
+        for (const sub of catFolder.childrenFolders) {
+          subSet.add(sub.name);
+        }
+      } else {
+        // Direct category folder has files directly
+        subSet.add(catName);
+      }
+    }
+  }
+
+  // Flatten into sorted hierarchical groups array
+  const groupedMilestones = [];
+  const allFlattenedColumns = [];
+
+  for (const [categoryName, subSet] of categoryGroupsMap.entries()) {
+    const subfoldersList = Array.from(subSet).sort((a, b) => {
+      const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
+      const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
+      if (numA && numB && numA !== numB) return numA - numB;
+      return a.localeCompare(b);
+    });
+
+    const groupItems = subfoldersList.map(subName => {
+      const colKey = subName === categoryName ? categoryName : `${categoryName} > ${subName}`;
+      return {
+        key: colKey,
+        category: categoryName,
+        subfolder: subName,
+        isDirectCategory: subName === categoryName
+      };
+    });
+
+    groupedMilestones.push({
+      categoryName,
+      columns: groupItems
+    });
+
+    allFlattenedColumns.push(...groupItems);
+  }
+
+  // Build student matrix rows with hierarchical keys
   const matrixRows = [];
 
   for (const studentFolder of firstLevelFolders) {
@@ -278,37 +330,69 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
     let studentSubmittedCount = 0;
     let studentEmptyCount = 0;
 
-    function collectStudentMilestones(node) {
-      const hasFiles = node.files.length > 0;
-      const hasSubfolders = node.childrenFolders.length > 0;
+    // Check each category and subfolder
+    for (const catGroup of groupedMilestones) {
+      const catFolder = studentFolder.childrenFolders.find(c => c.name === catGroup.categoryName);
 
-      if (!hasSubfolders || hasFiles) {
-        allLeafMilestones.add(node.name);
-        if (hasFiles) {
-          studentSubmissions[node.name] = {
-            status: 'submitted',
-            files: node.files,
-            isFolderEmpty: false
-          };
-          studentSubmittedCount += node.files.length;
-          folderStats.submittedFoldersCount++;
+      for (const col of catGroup.columns) {
+        if (!catFolder) {
+          // Student doesn't have this category folder at all
+          studentSubmissions[col.key] = null;
+          continue;
+        }
+
+        if (col.isDirectCategory) {
+          // Direct category has files
+          if (catFolder.files.length > 0) {
+            studentSubmissions[col.key] = {
+              status: 'submitted',
+              files: catFolder.files,
+              isFolderEmpty: false,
+              category: catGroup.categoryName,
+              subfolder: col.subfolder
+            };
+            studentSubmittedCount += catFolder.files.length;
+            folderStats.submittedFoldersCount++;
+          } else {
+            studentSubmissions[col.key] = {
+              status: 'empty',
+              files: [],
+              isFolderEmpty: true,
+              category: catGroup.categoryName,
+              subfolder: col.subfolder
+            };
+            studentEmptyCount++;
+            folderStats.emptyFoldersCount++;
+          }
         } else {
-          studentSubmissions[node.name] = {
-            status: 'empty',
-            files: [],
-            isFolderEmpty: true
-          };
-          studentEmptyCount++;
-          folderStats.emptyFoldersCount++;
+          // Find the specific subfolder inside this category
+          const subFolder = catFolder.childrenFolders.find(s => s.name === col.subfolder);
+          if (!subFolder) {
+            studentSubmissions[col.key] = null;
+          } else if (subFolder.files.length > 0) {
+            studentSubmissions[col.key] = {
+              status: 'submitted',
+              files: subFolder.files,
+              isFolderEmpty: false,
+              category: catGroup.categoryName,
+              subfolder: col.subfolder
+            };
+            studentSubmittedCount += subFolder.files.length;
+            folderStats.submittedFoldersCount++;
+          } else {
+            studentSubmissions[col.key] = {
+              status: 'empty',
+              files: [],
+              isFolderEmpty: true,
+              category: catGroup.categoryName,
+              subfolder: col.subfolder
+            };
+            studentEmptyCount++;
+            folderStats.emptyFoldersCount++;
+          }
         }
       }
-
-      for (const child of node.childrenFolders) {
-        collectStudentMilestones(child);
-      }
     }
-
-    collectStudentMilestones(studentFolder);
 
     matrixRows.push({
       studentName: cleanStudentName,
@@ -335,20 +419,14 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
 
   const rootTree = rootNode ? buildUiTree(rootNode) : { id: rootFolderId, name: rootMeta.name, type: 'folder', children: [] };
 
-  // Natural sort milestone names
-  const sortedMilestones = Array.from(allLeafMilestones).sort((a, b) => {
-    const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
-    const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
-    if (numA && numB && numA !== numB) return numA - numB;
-    return a.localeCompare(b);
-  });
-
   return {
     rootFolder: rootMeta,
     stats: folderStats,
     files: allDiscoveredFiles,
     matrixRows,
-    milestones: sortedMilestones,
+    groupedMilestones,
+    allFlattenedColumns,
+    milestones: allFlattenedColumns.map(c => c.key),
     tree: rootTree,
     scannedAt: new Date().toISOString()
   };

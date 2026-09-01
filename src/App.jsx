@@ -336,6 +336,8 @@ export default function App() {
               <SubmissionMatrix
                 matrixRows={auditData.matrixRows}
                 milestones={auditData.milestones}
+                groupedMilestones={auditData.groupedMilestones}
+                allFlattenedColumns={auditData.allFlattenedColumns}
                 rootFolderName={auditData.rootFolder?.name}
                 weekDeadlines={weekDeadlines}
                 weekRanges={weekRanges}

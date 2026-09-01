@@ -1,13 +1,29 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Download, Search, Info, Clock, AlertTriangle, ExternalLink, User, LayoutGrid, ListFilter, X, FileText } from 'lucide-react';
+import { CheckCircle2, XCircle, Download, Search, Info, Clock, AlertTriangle, ExternalLink, User, Folder, ChevronRight, X } from 'lucide-react';
 import { exportMatrixToCSV } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
-export default function SubmissionMatrix({ matrixRows, milestones, rootFolderName, weekDeadlines = {}, weekRanges = [] }) {
+const CATEGORY_COLORS = [
+  { bg: 'bg-blue-50/80', border: 'border-blue-200', text: 'text-blue-900', badge: 'bg-blue-100 text-blue-800' },
+  { bg: 'bg-purple-50/80', border: 'border-purple-200', text: 'text-purple-900', badge: 'bg-purple-100 text-purple-800' },
+  { bg: 'bg-emerald-50/80', border: 'border-emerald-200', text: 'text-emerald-900', badge: 'bg-emerald-100 text-emerald-800' },
+  { bg: 'bg-amber-50/80', border: 'border-amber-200', text: 'text-amber-900', badge: 'bg-amber-100 text-amber-800' },
+  { bg: 'bg-indigo-50/80', border: 'border-indigo-200', text: 'text-indigo-900', badge: 'bg-indigo-100 text-indigo-800' }
+];
+
+export default function SubmissionMatrix({
+  matrixRows,
+  milestones,
+  groupedMilestones = [],
+  allFlattenedColumns = [],
+  rootFolderName,
+  weekDeadlines = {},
+  weekRanges = []
+}) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'missing', 'completed', 'late'
+  const [filterStatus, setFilterStatus] = useState('all');
   const [viewDensity, setViewDensity] = useState('standard'); // 'compact', 'standard', 'detailed'
-  const [selectedCell, setSelectedCell] = useState(null); // Cell details dialog
+  const [selectedCell, setSelectedCell] = useState(null);
 
   if (!matrixRows || matrixRows.length === 0) return null;
 
@@ -16,6 +32,18 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
   weekRanges.forEach(w => {
     rangeLookup[w.name] = w;
   });
+
+  // Fallback if groupedMilestones is empty
+  const groups = groupedMilestones && groupedMilestones.length > 0
+    ? groupedMilestones
+    : [{
+        categoryName: 'Submission Milestones',
+        columns: (milestones || []).map(m => ({ key: m, category: 'Milestones', subfolder: m, isDirectCategory: true }))
+      }];
+
+  const flattenedCols = allFlattenedColumns && allFlattenedColumns.length > 0
+    ? allFlattenedColumns
+    : groups.flatMap(g => g.columns);
 
   // Filter rows by search term and submission status
   const filteredRows = matrixRows.filter(row => {
@@ -48,10 +76,10 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
         <div>
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            Submission Audit Matrix
+            Hierarchical Submission Matrix
           </h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Clear overview of student submissions vs weekly milestones. Identifies on-time (✓), late (<span className="text-amber-700 font-bold">L</span>), and missing (<span className="text-rose-600 font-bold">Empty</span>) work.
+            Grouped by <strong>Parent Folders</strong> (Top Tier) and <strong>Subfolders / Milestones</strong> (Bottom Tier).
           </p>
         </div>
 
@@ -123,26 +151,57 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
         </div>
       </div>
 
-      {/* Grid Table */}
+      {/* Grid Table with 2-Tier Grouped Headers */}
       <div className="overflow-x-auto max-h-[75vh]">
-        <table className="w-full text-left border-collapse min-w-[900px]">
-          <thead className="sticky top-0 z-20 bg-gray-100/95 backdrop-blur-xs">
-            <tr className="text-[11px] font-bold text-gray-700 border-b border-gray-200 uppercase tracking-wider">
+        <table className="w-full text-left border-collapse min-w-[950px]">
+          <thead className="sticky top-0 z-20 shadow-xs">
+            
+            {/* Tier 1: Parent Category Headers */}
+            <tr className="border-b border-gray-200 text-xs font-extrabold tracking-wide uppercase">
               
-              {/* Sticky Student Column Header */}
-              <th className="py-3.5 px-4 sticky left-0 bg-gray-100 border-r border-gray-200 z-30 w-64 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
+              {/* Sticky Student Header */}
+              <th
+                rowSpan={2}
+                className="py-3.5 px-4 sticky left-0 bg-gray-100 border-r border-gray-200 z-30 w-64 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] align-middle text-gray-900"
+              >
                 Student Name
               </th>
 
-              {/* Milestone Column Headers */}
-              {milestones.map(m => {
-                const rangeObj = rangeLookup[m];
+              {/* Grouped Category Headers */}
+              {groups.map((group, gIdx) => {
+                const theme = CATEGORY_COLORS[gIdx % CATEGORY_COLORS.length];
                 return (
-                  <th key={m} className="py-3 px-3 border-r border-gray-200 text-center min-w-[130px]">
+                  <th
+                    key={group.categoryName}
+                    colSpan={group.columns.length}
+                    className={`py-2.5 px-3 border-r border-gray-200 text-center ${theme.bg} ${theme.text} font-black tracking-wider text-[11px] border-b-2 ${theme.border}`}
+                  >
+                    <div className="flex items-center justify-center space-x-1.5">
+                      <Folder className="w-3.5 h-3.5 opacity-70" />
+                      <span>{group.categoryName}</span>
+                    </div>
+                  </th>
+                );
+              })}
+
+              <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-emerald-50 text-emerald-900 font-bold align-middle border-r border-gray-200">
+                Submitted
+              </th>
+              <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-rose-50 text-rose-900 font-bold align-middle">
+                Empty
+              </th>
+            </tr>
+
+            {/* Tier 2: Subfolder Headers */}
+            <tr className="bg-gray-50/95 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+              {flattenedCols.map(col => {
+                const rangeObj = rangeLookup[col.subfolder] || rangeLookup[col.category];
+                return (
+                  <th key={col.key} className="py-2 px-2 border-r border-gray-200 text-center min-w-[125px]">
                     <div className="flex flex-col items-center">
-                      <span className="font-extrabold text-gray-900">{m}</span>
+                      <span className="font-bold text-gray-800">{col.subfolder}</span>
                       {rangeObj && (
-                        <span className="text-[9px] font-medium text-gray-500 normal-case mt-0.5">
+                        <span className="text-[9px] font-normal text-gray-500 normal-case mt-0.5">
                           {rangeObj.formattedRange}
                         </span>
                       )}
@@ -150,10 +209,8 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
                   </th>
                 );
               })}
-
-              <th className="py-3 px-3 text-center min-w-[90px] bg-emerald-50/50 text-emerald-900">Submitted</th>
-              <th className="py-3 px-3 text-center min-w-[90px] bg-rose-50/50 text-rose-900">Empty</th>
             </tr>
+
           </thead>
 
           <tbody className="divide-y divide-gray-200 text-xs">
@@ -179,14 +236,14 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
                   </div>
                 </td>
 
-                {/* Milestone columns */}
-                {milestones.map(milestone => {
-                  const cellData = row.submissions[milestone];
-                  const deadlineIso = weekDeadlines[milestone];
+                {/* Hierarchical Column Cells */}
+                {flattenedCols.map(col => {
+                  const cellData = row.submissions[col.key];
+                  const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
 
                   if (!cellData) {
                     return (
-                      <td key={milestone} className="py-3 px-2 text-center border-r border-gray-200 text-gray-300">
+                      <td key={col.key} className="py-3 px-2 text-center border-r border-gray-200 text-gray-300">
                         <span className="text-sm font-light">&mdash;</span>
                       </td>
                     );
@@ -194,10 +251,10 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
 
                   if (cellData.isFolderEmpty) {
                     return (
-                      <td key={milestone} className="py-2 px-2 text-center border-r border-gray-200 bg-rose-50/30">
+                      <td key={col.key} className="py-2 px-2 text-center border-r border-gray-200 bg-rose-50/30">
                         <span
                           className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
-                          title="Folder exists but is EMPTY (0 files uploaded)"
+                          title={`Folder "${col.subfolder}" exists in "${col.category}" but is EMPTY (0 files uploaded)`}
                         >
                           <XCircle className="w-3 h-3 text-rose-500 shrink-0" />
                           <span>Empty</span>
@@ -214,8 +271,8 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
 
                   return (
                     <td
-                      key={milestone}
-                      onClick={() => setSelectedCell({ student: row.studentName, milestone, cellData, isLate, statusInfo })}
+                      key={col.key}
+                      onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
                       className={`py-2 px-2 text-center border-r border-gray-200 cursor-pointer transition-all hover:ring-2 hover:ring-google-blue/40 ${
                         isLate ? 'bg-amber-50/40 hover:bg-amber-100/50' : 'bg-emerald-50/20 hover:bg-emerald-100/40'
                       }`}
@@ -298,7 +355,7 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
         </span>
       </div>
 
-      {/* Cell Detail Preview Modal */}
+      {/* Cell Detail Preview Modal with Breadcrumbs */}
       {selectedCell && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-md w-full p-5 relative animate-in fade-in zoom-in duration-150">
@@ -316,7 +373,11 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
               </div>
               <div>
                 <h4 className="text-sm font-bold text-gray-900">{selectedCell.student}</h4>
-                <p className="text-xs text-gray-500">{selectedCell.milestone}</p>
+                <div className="text-xs text-gray-500 flex items-center gap-1 font-medium mt-0.5">
+                  <span className="text-gray-700 font-semibold">{selectedCell.category}</span>
+                  <ChevronRight className="w-3 h-3 text-gray-400" />
+                  <span className="text-google-blue font-bold">{selectedCell.subfolder}</span>
+                </div>
               </div>
             </div>
 
