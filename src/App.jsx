@@ -8,7 +8,7 @@ import FolderTreeView from './components/FolderTreeView';
 import ClientIdModal from './components/ClientIdModal';
 import DeadlineSettingsModal from './components/DeadlineSettingsModal';
 
-import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCurrentUser, isTokenExpired, setAccessToken } from './services/googleAuth';
+import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCurrentUser, isTokenExpired, setAccessToken, getValidAccessToken } from './services/googleAuth';
 import { scanDriveFolder } from './services/driveApi';
 import { extractDriveFolderId } from './utils/driveUrlParser';
 import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START } from './utils/weekDeadlineManager';
@@ -149,11 +149,9 @@ export default function App() {
       return;
     }
 
-    const currentToken = getAccessToken() || accessToken;
-    if (!currentToken || isTokenExpired()) {
-      setAccessToken(null);
-      setAccessTokenState(null);
-      setScanError('Your Google login session has expired. Click "Sign in with Google" to renew access.');
+    // Retrieve valid token or silently renew in background
+    let currentToken = await getValidAccessToken();
+    if (!currentToken) {
       handleGoogleLogin();
       return;
     }
@@ -185,10 +183,28 @@ export default function App() {
         return;
       }
       console.error('Scan Error:', err);
+
+      // If token expired mid-scan, silently renew and automatically retry without bothering the user!
       if (err.isAuthError || err.status === 401 || err.message?.includes('invalid authentication credentials') || err.message?.includes('Invalid Credentials') || err.message?.includes('UNAUTHENTICATED')) {
-        setAccessToken(null);
-        setAccessTokenState(null);
-        setScanError('Your Google session has expired. Click "Sign In with Google" below to renew your access.');
+        try {
+          const freshToken = await getValidAccessToken(true);
+          if (freshToken) {
+            const retryResult = await scanDriveFolder(
+              folderId,
+              freshToken,
+              scanDepth,
+              (progressInfo) => {
+                setScanProgress(progressInfo);
+              },
+              controller.signal
+            );
+            setAuditData(retryResult);
+            return;
+          }
+        } catch (retryErr) {
+          console.warn('Auto-retry after token renewal failed:', retryErr);
+        }
+
         handleGoogleLogin();
         return;
       }
