@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Download, Search, Info, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, Download, Search, Info, Clock, AlertTriangle, ExternalLink, User, LayoutGrid, ListFilter, X, FileText } from 'lucide-react';
 import { exportMatrixToCSV } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
 export default function SubmissionMatrix({ matrixRows, milestones, rootFolderName, weekDeadlines = {}, weekRanges = [] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'missing', 'completed', 'late'
+  const [viewDensity, setViewDensity] = useState('standard'); // 'compact', 'standard', 'detailed'
+  const [selectedCell, setSelectedCell] = useState(null); // Cell details dialog
 
   if (!matrixRows || matrixRows.length === 0) return null;
 
@@ -17,7 +19,10 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
 
   // Filter rows by search term and submission status
   const filteredRows = matrixRows.filter(row => {
-    const matchesSearch = row.studentName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      row.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (row.fullFolderName && row.fullFolderName.toLowerCase().includes(searchTerm.toLowerCase()));
+
     if (!matchesSearch) return false;
 
     if (filterStatus === 'missing') return row.emptyCount > 0;
@@ -25,30 +30,41 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
     return true;
   });
 
+  // Get initials for avatar
+  const getInitials = (name) => {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('');
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
       
-      {/* Header controls */}
-      <div className="p-4 sm:p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gray-50/50">
+      {/* Header controls & density toggle */}
+      <div className="p-4 sm:p-5 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gray-50/70">
         <div>
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             Submission Audit Matrix
           </h3>
-          <p className="text-xs text-gray-500">
-            Overview of student subfolders vs weekly milestones (Week 1–18). Tracks file upload dates and flags late submissions (<span className="text-amber-700 font-bold">L</span>).
+          <p className="text-xs text-gray-500 mt-0.5">
+            Clear overview of student submissions vs weekly milestones. Identifies on-time (✓), late (<span className="text-amber-700 font-bold">L</span>), and missing (<span className="text-rose-600 font-bold">Empty</span>) work.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          
           {/* Search bar */}
           <div className="relative">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Filter student name..."
-              className="pl-8 pr-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs text-gray-900 focus:ring-1 focus:ring-google-blue"
+              placeholder="Search student name..."
+              className="pl-8 pr-3 py-1.5 bg-white border border-gray-300 rounded-xl text-xs text-gray-900 focus:ring-2 focus:ring-google-blue focus:border-google-blue min-w-[190px]"
             />
             <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
           </div>
@@ -57,41 +73,76 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 font-medium focus:ring-1 focus:ring-google-blue"
+            className="bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs text-gray-700 font-semibold focus:ring-2 focus:ring-google-blue"
           >
-            <option value="all">All Students</option>
+            <option value="all">All Students ({matrixRows.length})</option>
             <option value="missing">With Missing Work</option>
             <option value="completed">All Submitted</option>
           </select>
 
-          {/* Export button */}
+          {/* View Density Switcher */}
+          <div className="flex items-center bg-gray-200/70 p-0.5 rounded-xl text-xs font-semibold">
+            <button
+              onClick={() => setViewDensity('compact')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                viewDensity === 'compact' ? 'bg-white text-google-blue shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+              title="Compact icons view"
+            >
+              Compact
+            </button>
+            <button
+              onClick={() => setViewDensity('standard')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                viewDensity === 'standard' ? 'bg-white text-google-blue shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+              title="Standard view with clean badges and dates"
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => setViewDensity('detailed')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                viewDensity === 'detailed' ? 'bg-white text-google-blue shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+              title="Detailed view with filenames"
+            >
+              Detailed
+            </button>
+          </div>
+
+          {/* Export CSV button */}
           <button
             onClick={() => exportMatrixToCSV(matrixRows, milestones, rootFolderName)}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-sm transition-colors"
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-colors"
             title="Download matrix report as CSV file"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export Matrix CSV</span>
+            <span>Export CSV</span>
           </button>
         </div>
       </div>
 
       {/* Grid Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[850px]">
-          <thead>
-            <tr className="bg-gray-100/80 text-[11px] font-bold text-gray-700 border-b border-gray-200 uppercase tracking-wider">
-              <th className="py-3 px-4 sticky left-0 bg-gray-100 border-r border-gray-200 z-10 w-64 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                Student Subfolder
+      <div className="overflow-x-auto max-h-[75vh]">
+        <table className="w-full text-left border-collapse min-w-[900px]">
+          <thead className="sticky top-0 z-20 bg-gray-100/95 backdrop-blur-xs">
+            <tr className="text-[11px] font-bold text-gray-700 border-b border-gray-200 uppercase tracking-wider">
+              
+              {/* Sticky Student Column Header */}
+              <th className="py-3.5 px-4 sticky left-0 bg-gray-100 border-r border-gray-200 z-30 w-64 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
+                Student Name
               </th>
+
+              {/* Milestone Column Headers */}
               {milestones.map(m => {
                 const rangeObj = rangeLookup[m];
                 return (
-                  <th key={m} className="py-3 px-3 border-r border-gray-200 text-center min-w-[125px]">
+                  <th key={m} className="py-3 px-3 border-r border-gray-200 text-center min-w-[130px]">
                     <div className="flex flex-col items-center">
-                      <span>{m}</span>
+                      <span className="font-extrabold text-gray-900">{m}</span>
                       {rangeObj && (
-                        <span className="text-[9px] font-normal text-gray-500 normal-case mt-0.5">
+                        <span className="text-[9px] font-medium text-gray-500 normal-case mt-0.5">
                           {rangeObj.formattedRange}
                         </span>
                       )}
@@ -99,22 +150,32 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
                   </th>
                 );
               })}
-              <th className="py-3 px-3 text-center min-w-[90px]">Submitted</th>
-              <th className="py-3 px-3 text-center min-w-[90px]">Empty</th>
+
+              <th className="py-3 px-3 text-center min-w-[90px] bg-emerald-50/50 text-emerald-900">Submitted</th>
+              <th className="py-3 px-3 text-center min-w-[90px] bg-rose-50/50 text-rose-900">Empty</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-gray-200 text-xs">
             {filteredRows.map((row, idx) => (
-              <tr key={row.studentName} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+              <tr key={row.studentName || idx} className={`transition-colors ${idx % 2 === 0 ? 'bg-white hover:bg-blue-50/30' : 'bg-gray-50/40 hover:bg-blue-50/30'}`}>
                 
-                {/* Student Folder Name */}
-                <td className="py-3 px-4 font-semibold text-gray-900 sticky left-0 bg-white border-r border-gray-200 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                  <div className="flex flex-col">
-                    <span className="truncate max-w-[210px]" title={row.studentName}>{row.studentName}</span>
-                    {row.email && (
-                      <span className="text-[10px] text-gray-400 font-normal truncate max-w-[210px]">{row.email}</span>
-                    )}
+                {/* Student Name Sticky Cell */}
+                <td className={`py-3 px-4 font-bold text-gray-900 sticky left-0 border-r border-gray-200 z-10 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 text-google-blue font-bold text-[11px] flex items-center justify-center shrink-0 border border-blue-200">
+                      {getInitials(row.studentName) || 'ST'}
+                    </div>
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="truncate max-w-[180px] text-xs text-gray-900" title={row.fullFolderName || row.studentName}>
+                        {row.studentName}
+                      </span>
+                      {row.fullFolderName && row.fullFolderName !== row.studentName && (
+                        <span className="text-[10px] text-gray-400 font-normal truncate max-w-[180px]" title={row.fullFolderName}>
+                          {row.fullFolderName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
 
@@ -125,17 +186,20 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
 
                   if (!cellData) {
                     return (
-                      <td key={milestone} className="py-3 px-2 text-center border-r border-gray-200 text-gray-400">
-                        <span className="text-[10px] text-gray-300">-</span>
+                      <td key={milestone} className="py-3 px-2 text-center border-r border-gray-200 text-gray-300">
+                        <span className="text-sm font-light">&mdash;</span>
                       </td>
                     );
                   }
 
                   if (cellData.isFolderEmpty) {
                     return (
-                      <td key={milestone} className="py-2.5 px-2 text-center border-r border-gray-200 bg-rose-50/40">
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title="Folder exists but is EMPTY (0 files uploaded)">
-                          <XCircle className="w-3 h-3 text-rose-600" />
+                      <td key={milestone} className="py-2 px-2 text-center border-r border-gray-200 bg-rose-50/30">
+                        <span
+                          className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                          title="Folder exists but is EMPTY (0 files uploaded)"
+                        >
+                          <XCircle className="w-3 h-3 text-rose-500 shrink-0" />
                           <span>Empty</span>
                         </span>
                       </td>
@@ -149,37 +213,48 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
                   const isLate = statusInfo.isLate;
 
                   return (
-                    <td key={milestone} className={`py-2.5 px-2 text-center border-r border-gray-200 ${isLate ? 'bg-amber-50/50' : 'bg-emerald-50/30'}`}>
+                    <td
+                      key={milestone}
+                      onClick={() => setSelectedCell({ student: row.studentName, milestone, cellData, isLate, statusInfo })}
+                      className={`py-2 px-2 text-center border-r border-gray-200 cursor-pointer transition-all hover:ring-2 hover:ring-google-blue/40 ${
+                        isLate ? 'bg-amber-50/40 hover:bg-amber-100/50' : 'bg-emerald-50/20 hover:bg-emerald-100/40'
+                      }`}
+                    >
                       <div className="flex flex-col items-center justify-center">
+                        
+                        {/* Compact Badge */}
                         {isLate ? (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300" title={`Uploaded late after deadline (${statusInfo.daysLate} days late)`}>
-                            <AlertTriangle className="w-3 h-3 text-amber-600" />
+                          <span
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-100/80 text-amber-900 border border-amber-300 shadow-2xs"
+                            title={`Uploaded late after deadline (${statusInfo.daysLate} working days late)`}
+                          >
+                            <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
                             <span>{statusInfo.label}</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>{cellData.files.length} file{cellData.files.length > 1 ? 's' : ''}</span>
+                          <span
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-100/80 text-emerald-900 border border-emerald-300 shadow-2xs"
+                            title="Submitted on time"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>{cellData.files.length === 1 ? '1 file' : `${cellData.files.length} files`}</span>
                           </span>
                         )}
 
-                        {/* File Name Preview */}
-                        {firstFile && (
-                          <span
-                            className="text-[9px] font-medium text-gray-700 hover:text-google-blue truncate max-w-[110px] block mt-1"
-                            title={`${firstFile.name} (Uploaded: ${firstFile.date})`}
-                          >
+                        {/* Standard View: Upload Date */}
+                        {viewDensity !== 'compact' && firstFile?.date && (
+                          <span className="text-[9px] text-gray-500 font-medium mt-1 whitespace-nowrap">
+                            {firstFile.date.replace(/, 202\d/, '')}
+                          </span>
+                        )}
+
+                        {/* Detailed View: File Name */}
+                        {viewDensity === 'detailed' && firstFile?.name && (
+                          <span className="text-[9px] text-google-blue font-semibold truncate max-w-[110px] mt-0.5 underline" title={firstFile.name}>
                             {firstFile.name}
                           </span>
                         )}
 
-                        {/* Upload Date & Time */}
-                        {firstFile && firstFile.date && (
-                          <span className="text-[8px] text-gray-500 font-mono flex items-center gap-0.5 mt-0.5">
-                            <Clock className="w-2.5 h-2.5 text-gray-400" />
-                            <span>{firstFile.date}</span>
-                          </span>
-                        )}
                       </div>
                     </td>
                   );
@@ -202,9 +277,9 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
       </div>
 
       {/* Footer Legend */}
-      <div className="p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 flex flex-wrap items-center justify-between gap-2">
+      <div className="p-3.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-1.5 font-medium text-emerald-800">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
             <span>Green = On Time Submission</span>
           </div>
@@ -212,14 +287,91 @@ export default function SubmissionMatrix({ matrixRows, milestones, rootFolderNam
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
             <span>L = Late Submission</span>
           </div>
-          <div className="flex items-center space-x-1.5 text-rose-700">
+          <div className="flex items-center space-x-1.5 font-medium text-rose-700">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
             <span>Empty = Missing Work</span>
           </div>
         </div>
 
-        <span className="font-semibold text-gray-700">{filteredRows.length} Student Folders</span>
+        <span className="text-xs text-gray-500 font-semibold">
+          Showing {filteredRows.length} of {matrixRows.length} Students &bull; <span className="text-google-blue">Click any cell for file preview</span>
+        </span>
       </div>
+
+      {/* Cell Detail Preview Modal */}
+      {selectedCell && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-md w-full p-5 relative animate-in fade-in zoom-in duration-150">
+            
+            <button
+              onClick={() => setSelectedCell(null)}
+              className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-3">
+              <div className={`p-2.5 rounded-xl ${selectedCell.isLate ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                {selectedCell.isLate ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900">{selectedCell.student}</h4>
+                <p className="text-xs text-gray-500">{selectedCell.milestone}</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Submission Status:</span>
+                {selectedCell.isLate ? (
+                  <span className="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+                    {selectedCell.statusInfo.label}
+                  </span>
+                ) : (
+                  <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                    ✓ On Time
+                  </span>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 pt-2 space-y-2">
+                <span className="text-gray-500 block font-semibold">Uploaded Files ({selectedCell.cellData.files.length}):</span>
+                {selectedCell.cellData.files.map((file, i) => (
+                  <div key={i} className="bg-white p-2.5 rounded-lg border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="overflow-hidden">
+                      <div className="font-semibold text-gray-900 truncate" title={file.name}>
+                        {file.name}
+                      </div>
+                      <div className="text-[10px] text-gray-500 flex items-center gap-2 mt-0.5">
+                        <span>🕒 {file.date}</span>
+                        {file.size && <span>&bull; {file.size}</span>}
+                      </div>
+                    </div>
+
+                    <a
+                      href={file.webViewLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 bg-google-blue hover:bg-google-hover text-white rounded-lg text-[11px] font-bold shrink-0 flex items-center gap-1 shadow-2xs"
+                    >
+                      <span>Open</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSelectedCell(null)}
+              className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold"
+            >
+              Close Preview
+            </button>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

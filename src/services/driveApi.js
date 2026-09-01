@@ -173,6 +173,8 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
           type: 'file',
           owner: ownerName,
           time: formatDate(f.modifiedTime),
+          dateIso: f.modifiedTime || f.createdTime,
+          size: processedFile.formattedSize,
           webViewLink: processedFile.webViewLink
         });
       }
@@ -211,7 +213,10 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
   const matrixRows = [];
 
   for (const studentFolder of firstLevelFolders) {
-    const studentName = studentFolder.name;
+    const rawStudentName = studentFolder.name;
+    // Clean student name for crystal clear display
+    const cleanStudentName = rawStudentName.replace(/ - (Major Project|Computer Application|June|Semester|\d).*$/i, '').trim() || rawStudentName;
+    
     const studentSubmissions = {};
     let studentSubmittedCount = 0;
     let studentEmptyCount = 0;
@@ -228,7 +233,14 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
           if (files.length > 0) {
             studentSubmissions[node.name] = {
               status: 'submitted',
-              files: files.map(f => ({ name: f.name, date: f.time, webViewLink: f.webViewLink })),
+              files: files.map(f => ({
+                name: f.name,
+                date: f.time,
+                dateIso: f.dateIso,
+                size: f.size,
+                owner: f.owner,
+                webViewLink: f.webViewLink
+              })),
               isFolderEmpty: false
             };
             studentSubmittedCount += files.length;
@@ -253,7 +265,8 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
     collectStudentMilestones(studentFolder);
 
     matrixRows.push({
-      studentName,
+      studentName: cleanStudentName,
+      fullFolderName: rawStudentName,
       submissions: studentSubmissions,
       submittedCount: studentSubmittedCount,
       emptyCount: studentEmptyCount
