@@ -14,7 +14,7 @@ import { extractDriveFolderId } from './utils/driveUrlParser';
 import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START } from './utils/weekDeadlineManager';
 import { Grid, FileText, FolderTree, HardDrive, LogIn, Search, CheckCircle2 } from 'lucide-react';
 
-const DEFAULT_CLIENT_ID = '973292062953-al1790ftopifkv22e04srjunqt0diiks.apps.googleusercontent.com';
+const DEFAULT_CLIENT_ID = '668113678070-o2ifl6k4encmi4na97r6mkgbjcrmirtm.apps.googleusercontent.com';
 
 export default function App() {
   // App state
