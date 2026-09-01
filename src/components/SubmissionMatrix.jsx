@@ -141,9 +141,9 @@ export default function SubmissionMatrix({
 
           {/* Export CSV button */}
           <button
-            onClick={() => exportMatrixToCSV(matrixRows, milestones, rootFolderName)}
+            onClick={() => exportMatrixToCSV(matrixRows, flattenedCols.map(c => c.key), rootFolderName, weekDeadlines)}
             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-colors"
-            title="Download matrix report as CSV file"
+            title="Download clean matrix report as CSV/Excel (Submitted, Late, Empty)"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>

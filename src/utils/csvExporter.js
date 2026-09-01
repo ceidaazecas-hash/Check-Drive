@@ -1,3 +1,5 @@
+import { getSubmissionStatus } from './weekDeadlineManager';
+
 /**
  * Export audit files and submission matrix to CSV files
  */
@@ -30,18 +32,30 @@ export function exportFilesToCSV(files, rootFolderName = 'Drive_Submission_Audit
   document.body.removeChild(link);
 }
 
-export function exportMatrixToCSV(matrixData, columns, rootFolderName = 'Drive_Submission_Matrix') {
+/**
+ * Export Matrix cleanly showing only: Submitted, Late, or Empty
+ */
+export function exportMatrixToCSV(matrixData, columns, rootFolderName = 'Drive_Submission_Matrix', weekDeadlines = {}) {
   if (!matrixData || matrixData.length === 0) return;
 
-  const headers = ['Student / Folder Name', ...columns.map(c => `"${c.replace(/"/g, '""')}"`), 'Total Submitted', 'Total Empty'];
+  const headers = ['Student Name', ...columns.map(c => `"${c.replace(/"/g, '""')}"`), 'Total Submitted', 'Total Empty'];
 
   const rows = matrixData.map(row => {
     const colValues = columns.map(col => {
       const cell = row.submissions[col];
       if (!cell) return '"-"';
-      if (cell.isFolderEmpty) return '"[EMPTY]"';
-      return `"${cell.files.length} file(s): ${cell.files.map(f => f.name).join('; ')}"`;
+      if (cell.isFolderEmpty) return '"Empty"';
+
+      const firstFile = cell.files && cell.files[0];
+      const deadlineIso = weekDeadlines[col] || (cell.subfolder && weekDeadlines[cell.subfolder]) || (cell.category && weekDeadlines[cell.category]);
+      const statusInfo = getSubmissionStatus(firstFile?.dateIso || firstFile?.date, deadlineIso);
+
+      if (statusInfo.isLate) {
+        return '"Late"';
+      }
+      return '"Submitted"';
     });
+
     return [
       `"${row.studentName.replace(/"/g, '""')}"`,
       ...colValues,
