@@ -1,8 +1,32 @@
 import { formatBytes, formatDate } from '../utils/driveUrlParser';
 
 /**
- * High-Speed Google Drive API v3 Batch Crawler with Multi-Parent Batching & Hierarchical Milestone Grouping
+ * Robust Google Drive API v3 Crawler with Exponential Backoff, Shared Drives Support,
+ * Recursive File Gathering, and Shortcut Resolution.
  */
+
+const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
+
+/**
+ * Fetch helper with automatic retry and exponential backoff for rate limits (429) & 5xx server errors
+ */
+async function fetchWithRetry(url, options = {}, retries = 3, backoffMs = 600) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.status === 429 || (res.status >= 500 && res.status <= 599)) {
+        if (attempt === retries) return res;
+        await new Promise(r => setTimeout(r, backoffMs * Math.pow(2, attempt - 1)));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (options.signal?.aborted) throw err;
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, backoffMs * Math.pow(2, attempt - 1)));
+    }
+  }
+}
 
 /**
  * Clean student folder name by removing course codes, majors, or trailing hyphens
@@ -25,14 +49,30 @@ export function cleanStudentFolderName(rawName) {
   return cleaned || rawName;
 }
 
-const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
+/**
+ * Helper: Recursively collect all files within a folder and all its subfolders
+ * This ensures that if a student uploaded files inside deeper nested directories,
+ * they are NEVER missed or marked as empty!
+ */
+export function getAllFilesInFolderRecursive(folderNode) {
+  if (!folderNode) return [];
+  const filesList = [...(folderNode.files || [])];
+  if (folderNode.childrenFolders && folderNode.childrenFolders.length > 0) {
+    for (const child of folderNode.childrenFolders) {
+      filesList.push(...getAllFilesInFolderRecursive(child));
+    }
+  }
+  return filesList;
+}
 
 /**
- * Fetch folder details by ID
+ * Fetch folder details by ID with Shared Drives support
  */
 export async function getFolderMetadata(folderId, accessToken, abortSignal = null) {
   const fields = 'id,name,mimeType,owners,createdTime,modifiedTime,webViewLink';
-  const res = await fetch(`${DRIVE_API_BASE}/files/${folderId}?fields=${encodeURIComponent(fields)}`, {
+  const url = `${DRIVE_API_BASE}/files/${folderId}?fields=${encodeURIComponent(fields)}&supportsAllDrives=true`;
+  
+  const res = await fetchWithRetry(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: abortSignal
   });
@@ -46,10 +86,10 @@ export async function getFolderMetadata(folderId, accessToken, abortSignal = nul
 }
 
 /**
- * List direct children of a single folder
+ * List direct children of a single folder with pagination and Shared Drives support
  */
 export async function listFolderChildren(folderId, accessToken, abortSignal = null) {
-  const fields = 'files(id,name,mimeType,owners,lastModifyingUser,createdTime,modifiedTime,size,webViewLink,parents)';
+  const fields = 'files(id,name,mimeType,owners,lastModifyingUser,createdTime,modifiedTime,size,webViewLink,parents,shortcutDetails)';
   const q = `'${folderId}' in parents and trashed = false`;
   
   let allFiles = [];
@@ -60,8 +100,9 @@ export async function listFolderChildren(folderId, accessToken, abortSignal = nu
       throw new DOMException('Scan cancelled by user', 'AbortError');
     }
 
-    const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields + ',nextPageToken')}&pageSize=1000${pageToken ? `&pageToken=${pageToken}` : ''}`;
-    const res = await fetch(url, {
+    const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields + ',nextPageToken')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ''}`;
+    
+    const res = await fetchWithRetry(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: abortSignal
     });
@@ -82,7 +123,7 @@ export async function listFolderChildren(folderId, accessToken, abortSignal = nu
 }
 
 /**
- * Ultra-Fast: List children for multiple parent folders in single batch requests
+ * Ultra-Fast: List children for multiple parent folders in single batch requests with fallback
  */
 export async function listMultiFolderChildren(folderIds, accessToken, abortSignal = null) {
   if (!folderIds || folderIds.length === 0) return [];
@@ -97,43 +138,55 @@ export async function listMultiFolderChildren(folderIds, accessToken, abortSigna
   const results = await Promise.all(chunks.map(async (chunkIds) => {
     const parentQuery = chunkIds.map(id => `'${id}' in parents`).join(' or ');
     const q = `(${parentQuery}) and trashed = false`;
-    const fields = 'files(id,name,mimeType,owners,lastModifyingUser,createdTime,modifiedTime,size,webViewLink,parents)';
+    const fields = 'files(id,name,mimeType,owners,lastModifyingUser,createdTime,modifiedTime,size,webViewLink,parents,shortcutDetails)';
     
     let allFiles = [];
     let pageToken = null;
 
-    do {
-      if (abortSignal?.aborted) {
-        throw new DOMException('Scan cancelled by user', 'AbortError');
-      }
+    try {
+      do {
+        if (abortSignal?.aborted) {
+          throw new DOMException('Scan cancelled by user', 'AbortError');
+        }
 
-      const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields + ',nextPageToken')}&pageSize=1000${pageToken ? `&pageToken=${pageToken}` : ''}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        signal: abortSignal
-      });
+        const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields + ',nextPageToken')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ''}`;
+        
+        const res = await fetchWithRetry(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: abortSignal
+        });
 
-      if (!res.ok) {
-        // Fallback to individual requests if batch query is restricted
-        const individual = await Promise.all(chunkIds.map(id => listFolderChildren(id, accessToken, abortSignal).catch(() => [])));
-        return individual.flat();
-      }
+        if (!res.ok) {
+          // Fallback to individual requests if batch query fails
+          const individual = await Promise.all(
+            chunkIds.map(id => listFolderChildren(id, accessToken, abortSignal).catch(() => []))
+          );
+          return individual.flat();
+        }
 
-      const data = await res.json();
-      if (data.files) {
-        allFiles = allFiles.concat(data.files);
-      }
-      pageToken = data.nextPageToken;
-    } while (pageToken);
+        const data = await res.json();
+        if (data.files) {
+          allFiles = allFiles.concat(data.files);
+        }
+        pageToken = data.nextPageToken;
+      } while (pageToken);
 
-    return allFiles;
+      return allFiles;
+    } catch (e) {
+      if (abortSignal?.aborted) throw e;
+      // Fallback to individual requests on error
+      const individual = await Promise.all(
+        chunkIds.map(id => listFolderChildren(id, accessToken, abortSignal).catch(() => []))
+      );
+      return individual.flat();
+    }
   }));
 
   return results.flat();
 }
 
 /**
- * Ultra-Fast Level-by-Level Batch Crawler with Hierarchical Grouping
+ * Level-by-Level BFS Scanner with Accurate Hierarchy, Shared Drives, and Recursive Submissions
  */
 export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, progressCallback = null, abortSignal = null) {
   const rootMeta = await getFolderMetadata(rootFolderId, accessToken, abortSignal);
@@ -192,7 +245,9 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
       const parentPath = parentObj ? parentObj.path : rootMeta.name;
       const parentStudent = parentObj ? parentObj.studentName : '';
 
-      const isFolder = item.mimeType === 'application/vnd.google-apps.folder';
+      // Check if item is a folder (or a shortcut to a folder)
+      const isFolder = item.mimeType === 'application/vnd.google-apps.folder' ||
+        (item.mimeType === 'application/vnd.google-apps.shortcut' && item.shortcutDetails?.targetMimeType === 'application/vnd.google-apps.folder');
 
       if (isFolder) {
         folderStats.totalFoldersScanned++;
@@ -341,16 +396,18 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
     allFlattenedColumns.push(...groupItems);
   }
 
-  // Build student matrix rows with hierarchical keys
+  // Build student matrix rows with hierarchical keys and recursive file gathering
   const matrixRows = [];
+  let totalSubmittedFolders = 0;
+  let totalEmptyFolders = 0;
 
   for (const studentFolder of firstLevelFolders) {
     const rawStudentName = studentFolder.name;
     const cleanStudentName = cleanStudentFolderName(rawStudentName);
     
     const studentSubmissions = {};
-    let studentSubmittedCount = 0;
-    let studentEmptyCount = 0;
+    let studentSubmittedMilestonesCount = 0;
+    let studentEmptyMilestonesCount = 0;
 
     // Check each category and subfolder
     for (const catGroup of groupedMilestones) {
@@ -364,17 +421,18 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
         }
 
         if (col.isDirectCategory) {
-          // Direct category has files
-          if (catFolder.files.length > 0) {
+          // Direct category: Gather all files recursively inside catFolder
+          const files = getAllFilesInFolderRecursive(catFolder);
+          if (files.length > 0) {
             studentSubmissions[col.key] = {
               status: 'submitted',
-              files: catFolder.files,
+              files,
               isFolderEmpty: false,
               category: catGroup.categoryName,
               subfolder: col.subfolder
             };
-            studentSubmittedCount += catFolder.files.length;
-            folderStats.submittedFoldersCount++;
+            studentSubmittedMilestonesCount++;
+            totalSubmittedFolders++;
           } else {
             studentSubmissions[col.key] = {
               status: 'empty',
@@ -383,34 +441,38 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
               category: catGroup.categoryName,
               subfolder: col.subfolder
             };
-            studentEmptyCount++;
-            folderStats.emptyFoldersCount++;
+            studentEmptyMilestonesCount++;
+            totalEmptyFolders++;
           }
         } else {
           // Find the specific subfolder inside this category
           const subFolder = catFolder.childrenFolders.find(s => s.name === col.subfolder);
           if (!subFolder) {
             studentSubmissions[col.key] = null;
-          } else if (subFolder.files.length > 0) {
-            studentSubmissions[col.key] = {
-              status: 'submitted',
-              files: subFolder.files,
-              isFolderEmpty: false,
-              category: catGroup.categoryName,
-              subfolder: col.subfolder
-            };
-            studentSubmittedCount += subFolder.files.length;
-            folderStats.submittedFoldersCount++;
           } else {
-            studentSubmissions[col.key] = {
-              status: 'empty',
-              files: [],
-              isFolderEmpty: true,
-              category: catGroup.categoryName,
-              subfolder: col.subfolder
-            };
-            studentEmptyCount++;
-            folderStats.emptyFoldersCount++;
+            // Gather all files recursively inside subFolder (including nested subfolders)
+            const files = getAllFilesInFolderRecursive(subFolder);
+            if (files.length > 0) {
+              studentSubmissions[col.key] = {
+                status: 'submitted',
+                files,
+                isFolderEmpty: false,
+                category: catGroup.categoryName,
+                subfolder: col.subfolder
+              };
+              studentSubmittedMilestonesCount++;
+              totalSubmittedFolders++;
+            } else {
+              studentSubmissions[col.key] = {
+                status: 'empty',
+                files: [],
+                isFolderEmpty: true,
+                category: catGroup.categoryName,
+                subfolder: col.subfolder
+              };
+              studentEmptyMilestonesCount++;
+              totalEmptyFolders++;
+            }
           }
         }
       }
@@ -420,10 +482,13 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
       studentName: cleanStudentName,
       fullFolderName: rawStudentName,
       submissions: studentSubmissions,
-      submittedCount: studentSubmittedCount,
-      emptyCount: studentEmptyCount
+      submittedCount: studentSubmittedMilestonesCount,
+      emptyCount: studentEmptyMilestonesCount
     });
   }
+
+  folderStats.submittedFoldersCount = totalSubmittedFolders;
+  folderStats.emptyFoldersCount = totalEmptyFolders;
 
   // Construct UI Tree
   function buildUiTree(node) {
