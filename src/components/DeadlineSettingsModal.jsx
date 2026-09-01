@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Check, RotateCcw, Zap } from 'lucide-react';
 import {
   generateDefaultWeekRanges,
   DEFAULT_SEMESTER_START,
@@ -75,151 +74,118 @@ export default function DeadlineSettingsModal({
 
   if (!isOpen) return null;
 
-  // Change semester start date
-  const handleStartDateChange = (newDateStr) => {
-    setStartDate(newDateStr);
-    const { hours, minutes } = parseTimeString(globalTime);
-    const newBaseWeeks = generateDefaultWeekRanges(newDateStr, hours, minutes);
-    setLocalWeeks(newBaseWeeks);
-  };
+  const handleStartDateChange = (newStartDateStr) => {
+    setStartDate(newStartDateStr);
+    const updatedWeeks = generateDefaultWeekRanges(newStartDateStr);
+    
+    // Preserve custom times if previously entered
+    setLocalWeeks(updatedWeeks.map((w, idx) => {
+      const existing = localWeeks[idx];
+      const customTime = existing ? existing.timeString : globalTime;
+      const parsedTime = parseTimeString(customTime);
+      
+      const dueD = new Date(w.endDate);
+      dueD.setHours(parsedTime.hours, parsedTime.minutes, 59, 999);
 
-  // Apply a time to all 18 weeks at once
-  const handleApplyTimeToAll = (targetTimeStr) => {
-    setGlobalTime(targetTimeStr);
-    const { hours, minutes } = parseTimeString(targetTimeStr);
-
-    setLocalWeeks(prev => prev.map(w => {
-      const dateParts = w.dateString.split('-');
-      const d = new Date(
-        parseInt(dateParts[0], 10),
-        parseInt(dateParts[1], 10) - 1,
-        parseInt(dateParts[2], 10),
-        hours,
-        minutes,
-        59,
-        999
-      );
       return {
         ...w,
-        deadlineIso: d.toISOString(),
-        timeString: format12HourTime(hours, minutes)
+        deadlineIso: dueD.toISOString(),
+        dateString: formatDateInput(dueD),
+        timeString: customTime
       };
     }));
   };
 
-  // Change specific week date
   const handleWeekDateChange = (weekName, newDateStr) => {
     setLocalWeeks(prev => prev.map(w => {
-      if (w.name === weekName) {
-        const { hours, minutes } = parseTimeString(w.timeString);
-        const dateParts = newDateStr.split('-');
-        const d = new Date(
-          parseInt(dateParts[0], 10),
-          parseInt(dateParts[1], 10) - 1,
-          parseInt(dateParts[2], 10),
-          hours,
-          minutes,
-          59,
-          999
-        );
-        return {
-          ...w,
-          dateString: newDateStr,
-          deadlineIso: d.toISOString()
-        };
-      }
-      return w;
+      if (w.name !== weekName) return w;
+      const parsedTime = parseTimeString(w.timeString || '23:59');
+      const [year, month, day] = newDateStr.split('-').map(Number);
+      const newD = new Date(year, month - 1, day, parsedTime.hours, parsedTime.minutes, 59, 999);
+      
+      return {
+        ...w,
+        deadlineIso: newD.toISOString(),
+        dateString: newDateStr
+      };
     }));
   };
 
-  // Change specific week time (user types "11:59 pm" or selects preset)
   const handleWeekTimeChange = (weekName, newTimeStr) => {
     setLocalWeeks(prev => prev.map(w => {
-      if (w.name === weekName) {
-        const { hours, minutes } = parseTimeString(newTimeStr);
-        const dateParts = w.dateString.split('-');
-        const d = new Date(
-          parseInt(dateParts[0], 10),
-          parseInt(dateParts[1], 10) - 1,
-          parseInt(dateParts[2], 10),
-          hours,
-          minutes,
-          59,
-          999
-        );
-        return {
-          ...w,
-          timeString: newTimeStr,
-          deadlineIso: d.toISOString()
-        };
-      }
-      return w;
+      if (w.name !== weekName) return w;
+      const parsedTime = parseTimeString(newTimeStr);
+      const d = new Date(w.deadlineIso || w.endDate);
+      d.setHours(parsedTime.hours, parsedTime.minutes, 59, 999);
+      
+      return {
+        ...w,
+        deadlineIso: d.toISOString(),
+        timeString: newTimeStr
+      };
     }));
   };
 
-  // Reset to default Monday June 8, 2026 at 11:59 PM
+  const handleApplyTimeToAll = (timeStr) => {
+    setGlobalTime(timeStr);
+    const parsed = parseTimeString(timeStr);
+
+    setLocalWeeks(prev => prev.map(w => {
+      const d = new Date(w.deadlineIso || w.endDate);
+      d.setHours(parsed.hours, parsed.minutes, 59, 999);
+      return {
+        ...w,
+        deadlineIso: d.toISOString(),
+        timeString: timeStr
+      };
+    }));
+  };
+
   const handleResetToDefaults = () => {
     setStartDate(DEFAULT_SEMESTER_START);
     setGlobalTime('11:59 PM');
-    const defaultWeeks = generateDefaultWeekRanges(DEFAULT_SEMESTER_START, 23, 59);
+    const defaultWeeks = generateDefaultWeekRanges(DEFAULT_SEMESTER_START);
     setLocalWeeks(defaultWeeks);
   };
 
-  // Save changes
-  const handleSave = (e) => {
-    e.preventDefault();
-    setSemesterStartDate(startDate);
-
+  const handleSave = () => {
     const deadlineMap = {};
     localWeeks.forEach(w => {
-      const { hours, minutes } = parseTimeString(w.timeString);
-      const dateParts = w.dateString.split('-');
-      const d = new Date(
-        parseInt(dateParts[0], 10),
-        parseInt(dateParts[1], 10) - 1,
-        parseInt(dateParts[2], 10),
-        hours,
-        minutes,
-        59,
-        999
-      );
-      deadlineMap[w.name] = d.toISOString();
+      deadlineMap[w.name] = w.deadlineIso;
     });
 
+    setSemesterStartDate(startDate);
     setCustomDeadlines(deadlineMap);
+    localStorage.setItem('semester_start_date', startDate);
+    localStorage.setItem('custom_week_deadlines', JSON.stringify(deadlineMap));
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-3xl w-full p-6 relative max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+      <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] flex flex-col relative animate-in fade-in zoom-in duration-150 border-0 shadow-2xl">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+          className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-0 font-bold"
         >
-          <X className="w-5 h-5" />
+          &times;
         </button>
 
         {/* Header */}
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
-            <Calendar className="w-6 h-6 stroke-[2.2]" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">Semester Schedule & Deadlines (Week 1 - 18)</h3>
-            <p className="text-xs text-gray-500">
-              Set semester start date and due time (e.g. <strong>11:59 PM</strong> or <strong>05:00 PM</strong>) for Late (<span className="text-amber-700 font-bold">L</span>) tracking.
-            </p>
-          </div>
+        <div className="mb-4 text-center">
+          <h3 className="text-lg font-black text-gray-900">Semester Schedule & Deadlines (Week 1 - 18)</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Set semester start date and due time for Late tracking.
+          </p>
         </div>
 
         {/* Global Controls & Time Presets */}
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-4 space-y-3">
+        <div className="bg-gray-50 rounded-2xl p-4 mb-4 space-y-3 border-0">
           
           {/* Row 1: Start Date & Reset */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
             <div className="flex items-center space-x-3">
               <label className="text-xs font-bold text-gray-700 whitespace-nowrap">
                 Week 1 Start Date (Monday):
@@ -228,25 +194,23 @@ export default function DeadlineSettingsModal({
                 type="date"
                 value={startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-google-blue"
+                className="px-3 py-1.5 bg-white rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-google-blue border-0 shadow-2xs"
               />
             </div>
 
             <button
               type="button"
               onClick={handleResetToDefaults}
-              className="text-xs text-gray-600 hover:text-gray-900 font-semibold flex items-center space-x-1"
+              className="text-xs text-gray-600 hover:text-gray-900 font-bold border-0"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Default (Mon Jun 8, 2026 @ 11:59 PM)</span>
+              Reset Default (Mon Jun 8, 2026 @ 11:59 PM)
             </button>
           </div>
 
           {/* Row 2: Global Due Time Presets & "Apply to All" */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-gray-700 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-xs font-bold text-gray-700">
                 Default Due Time:
               </span>
 
@@ -255,10 +219,10 @@ export default function DeadlineSettingsModal({
                   key={preset}
                   type="button"
                   onClick={() => handleApplyTimeToAll(preset)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border-0 shadow-2xs ${
                     globalTime === preset
-                      ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                      ? 'bg-[#f6ad55] text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {preset}
@@ -272,16 +236,15 @@ export default function DeadlineSettingsModal({
                   value={globalTime}
                   onChange={(e) => setGlobalTime(e.target.value)}
                   placeholder="e.g. 11:59 pm"
-                  className="w-24 px-2 py-1 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-800 text-center focus:ring-1 focus:ring-google-blue"
+                  className="w-24 px-2.5 py-1 bg-white rounded-xl text-xs font-bold text-gray-800 text-center focus:ring-1 focus:ring-google-blue border-0 shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => handleApplyTimeToAll(globalTime)}
-                  className="px-2.5 py-1 bg-google-blue hover:bg-google-hover text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs"
+                  className="px-3 py-1 bg-google-blue hover:bg-google-hover text-white rounded-xl text-xs font-bold shadow-2xs border-0"
                   title="Apply entered time to all 18 weeks"
                 >
-                  <Zap className="w-3 h-3" />
-                  <span>Apply All</span>
+                  Apply All
                 </button>
               </div>
             </div>
@@ -295,10 +258,10 @@ export default function DeadlineSettingsModal({
             {localWeeks.map(w => (
               <div
                 key={w.name}
-                className="p-3 bg-white border border-gray-200 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs hover:border-gray-300"
+                className="p-3 bg-gray-50 rounded-2xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs border-0"
               >
                 <div>
-                  <div className="font-extrabold text-gray-900 text-xs">{w.name}</div>
+                  <div className="font-black text-gray-900 text-xs">{w.name}</div>
                   <div className="text-[10px] text-gray-500 font-medium">{w.formattedRange} (Mon-Fri)</div>
                 </div>
 
@@ -309,20 +272,18 @@ export default function DeadlineSettingsModal({
                     type="date"
                     value={w.dateString}
                     onChange={(e) => handleWeekDateChange(w.name, e.target.value)}
-                    className="px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-xs font-semibold text-gray-800 focus:ring-1 focus:ring-google-blue"
+                    className="px-2 py-1 bg-white rounded-lg text-xs font-bold text-gray-800 focus:ring-1 focus:ring-google-blue border-0 shadow-2xs"
                   />
 
-                  {/* Due Time Input / Presets (Supports 11:59 pm format) */}
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      value={w.timeString}
-                      onChange={(e) => handleWeekTimeChange(w.name, e.target.value)}
-                      placeholder="11:59 PM"
-                      className="w-24 px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-xs font-bold text-gray-800 text-center focus:ring-1 focus:ring-google-blue"
-                      title="Enter time like 11:59 PM, 5:00 PM, etc."
-                    />
-                  </div>
+                  {/* Due Time Input */}
+                  <input
+                    type="text"
+                    value={w.timeString}
+                    onChange={(e) => handleWeekTimeChange(w.name, e.target.value)}
+                    placeholder="11:59 PM"
+                    className="w-24 px-2 py-1 bg-white rounded-lg text-xs font-bold text-gray-800 text-center focus:ring-1 focus:ring-google-blue border-0 shadow-2xs"
+                    title="Enter time like 11:59 PM, 5:00 PM, etc."
+                  />
 
                 </div>
               </div>
@@ -331,20 +292,19 @@ export default function DeadlineSettingsModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex justify-end space-x-2 pt-3 border-t border-gray-200">
+        <div className="flex justify-end space-x-2 pt-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold"
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold border-0"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-google-blue hover:bg-google-hover text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm"
+            className="px-4 py-2 bg-google-blue hover:bg-google-hover text-white rounded-xl text-xs font-black shadow-xs border-0"
           >
-            <Check className="w-4 h-4" />
-            <span>Apply Schedule & Deadlines</span>
+            Apply Schedule & Deadlines
           </button>
         </div>
 

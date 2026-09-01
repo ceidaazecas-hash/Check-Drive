@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Folder, FolderOpen, FileText, ChevronRight, ChevronDown, ExternalLink, AlertCircle } from 'lucide-react';
 
 function TreeNode({ node, level = 0 }) {
   const [isOpen, setIsOpen] = useState(level < 2); // Auto expand top 2 levels
@@ -10,49 +9,43 @@ function TreeNode({ node, level = 0 }) {
   return (
     <div className="select-none text-xs">
       <div
-        className={`flex items-center space-x-2 py-1.5 px-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer ${
-          isEmptyFolder ? 'bg-rose-50/50 text-rose-800' : ''
+        className={`flex items-center space-x-2 py-1.5 px-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border-0 ${
+          isEmptyFolder ? 'bg-rose-50 text-rose-800' : ''
         }`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={() => isFolder && setIsOpen(!isOpen)}
       >
         {isFolder ? (
           <>
-            <button className="p-0.5 text-gray-400 hover:text-gray-700">
-              {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
-            {isOpen ? (
-              <FolderOpen className={`w-4 h-4 ${isEmptyFolder ? 'text-rose-500' : 'text-amber-500'}`} />
-            ) : (
-              <Folder className={`w-4 h-4 ${isEmptyFolder ? 'text-rose-500' : 'text-amber-500'}`} />
-            )}
-            <span className={`font-semibold ${isEmptyFolder ? 'text-rose-800 font-bold' : 'text-gray-900'}`}>
+            <span className="font-mono text-gray-500 font-bold text-[11px] w-4">
+              {isOpen ? '[-]' : '[+]'}
+            </span>
+            <span className={`font-black ${isEmptyFolder ? 'text-rose-800' : 'text-gray-900'}`}>
               {node.name}
             </span>
 
             {isEmptyFolder && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-black bg-[#f56565] text-white border-0 shadow-2xs">
                 EMPTY FOLDER
               </span>
             )}
           </>
         ) : (
           <>
-            <span className="w-3.5 h-3.5" /> {/* spacing alignment */}
-            <FileText className="w-4 h-4 text-google-blue flex-shrink-0" />
-            <span className="text-gray-800 font-medium truncate">{node.name}</span>
-            {node.owner && <span className="text-[10px] text-gray-400 font-normal">({node.owner})</span>}
-            {node.time && <span className="text-[10px] text-gray-400 font-normal ml-auto">{node.time}</span>}
+            <span className="w-4" />
+            <span className="text-gray-800 font-bold truncate">{node.name}</span>
+            {node.owner && <span className="text-[10px] text-gray-400 font-medium">({node.owner})</span>}
+            {node.time && <span className="text-[10px] text-gray-400 font-medium ml-auto">{node.time}</span>}
             {node.webViewLink && (
               <a
                 href={node.webViewLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-gray-400 hover:text-google-blue p-0.5"
+                className="px-2 py-0.5 bg-google-blue text-white rounded font-bold text-[10px] hover:bg-google-hover border-0 ml-1"
                 title="Open in Drive"
               >
-                <ExternalLink className="w-3 h-3" />
+                Open
               </a>
             )}
           </>
@@ -74,16 +67,15 @@ export default function FolderTreeView({ tree }) {
   if (!tree) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 mb-6">
-      <h3 className="text-base font-bold text-gray-900 mb-1 flex items-center gap-2">
-        <FolderOpen className="w-5 h-5 text-amber-500" />
+    <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-5 mb-6 border-0">
+      <h3 className="text-base font-black text-gray-900 mb-1">
         Interactive Drive Hierarchy Inspector
       </h3>
       <p className="text-xs text-gray-500 mb-4">
         Expand or collapse folders to inspect nested files and pinpoint empty submission directories.
       </p>
 
-      <div className="bg-gray-50/70 border border-gray-200 rounded-xl p-3 max-h-[500px] overflow-y-auto">
+      <div className="bg-gray-50 rounded-2xl p-3 max-h-[500px] overflow-y-auto border-0">
         <TreeNode node={tree} level={0} />
       </div>
     </div>

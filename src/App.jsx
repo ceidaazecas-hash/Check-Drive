@@ -12,7 +12,7 @@ import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCu
 import { scanDriveFolder } from './services/driveApi';
 import { extractDriveFolderId } from './utils/driveUrlParser';
 import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START } from './utils/weekDeadlineManager';
-import { Grid, FileText, FolderTree, HardDrive, LogIn, Search, CheckCircle2 } from 'lucide-react';
+// No icons imported
 
 const DEFAULT_CLIENT_ID = '668113678070-o2ifl6k4encmi4na97r6mkgbjcrmirtm.apps.googleusercontent.com';
 
@@ -237,45 +237,32 @@ export default function App() {
 
         {/* Welcome Empty State Hero (shown before scanning) */}
         {!auditData && !isScanning && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm my-6">
-            <div className="w-16 h-16 bg-blue-50 text-google-blue rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
-              <HardDrive className="w-8 h-8 stroke-[2]" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Google Drive Submission Inspector</h2>
+          <div className="bg-white rounded-2xl p-8 text-center shadow-sm my-6 border-0">
+            <h2 className="text-xl font-black text-gray-900 mb-2">Google Drive Submission Inspector</h2>
             <p className="text-sm text-gray-600 max-w-lg mx-auto mb-6">
               Audit student submissions in any Google Drive folder. Automatically inspects nested subfolders to track <strong>who</strong> submitted <strong>what</strong>, <strong>when</strong>, and detect late submissions (<strong>L</strong>).
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left mb-6">
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
-                <div className="font-bold text-gray-900 mb-1 flex items-center gap-1.5">
-                  <LogIn className="w-3.5 h-3.5 text-google-blue" />
-                  1. Sign In
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-center mb-6">
+              <div className="p-4 bg-gray-50 rounded-2xl text-xs border-0">
+                <div className="font-black text-gray-900 mb-1">1. Sign In</div>
                 <div className="text-gray-500">Sign in with your Google account to grant read access.</div>
               </div>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
-                <div className="font-bold text-gray-900 mb-1 flex items-center gap-1.5">
-                  <Search className="w-3.5 h-3.5 text-amber-500" />
-                  2. Paste Folder Link
-                </div>
+              <div className="p-4 bg-gray-50 rounded-2xl text-xs border-0">
+                <div className="font-black text-gray-900 mb-1">2. Paste Folder Link</div>
                 <div className="text-gray-500">Paste your class or project folder link into the box above.</div>
               </div>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
-                <div className="font-bold text-gray-900 mb-1 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  3. Audit & Track Late (L)
-                </div>
-                <div className="text-gray-500">View matrix overview, timestamps, late badges & export to CSV.</div>
+              <div className="p-4 bg-gray-50 rounded-2xl text-xs border-0">
+                <div className="font-black text-gray-900 mb-1">3. Audit & Track Late</div>
+                <div className="text-gray-500">View matrix overview, timestamps, late badges & export to Excel.</div>
               </div>
             </div>
 
             {!accessToken && (
               <button
                 onClick={handleGoogleLogin}
-                className="px-6 py-3 bg-google-blue hover:bg-google-hover text-white rounded-xl text-sm font-bold shadow-md transition-all inline-flex items-center space-x-2"
+                className="px-6 py-3 bg-google-blue hover:bg-google-hover text-white rounded-xl text-sm font-black shadow-xs transition-all border-0"
               >
-                <LogIn className="w-4 h-4" />
                 <span>Sign in with Google to Start</span>
               </button>
             )}
@@ -292,41 +279,38 @@ export default function App() {
               scannedAt={auditData.scannedAt}
             />
 
-            {/* View Tabs Selector */}
-            <div className="flex border-b border-gray-200 mb-6 bg-white rounded-xl p-1.5 border shadow-sm">
+            {/* View Tabs Selector (Solid, No Outlines, No Icons) */}
+            <div className="flex gap-2 mb-6 bg-white rounded-2xl p-1.5 shadow-sm border-0">
               <button
                 onClick={() => setActiveTab('matrix')}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition-all ${
+                className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-black transition-all border-0 ${
                   activeTab === 'matrix'
-                    ? 'bg-google-blue text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-google-blue text-white shadow-xs'
+                    : 'bg-transparent text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <Grid className="w-4 h-4" />
                 <span>Submission Matrix</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('table')}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition-all ${
+                className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-black transition-all border-0 ${
                   activeTab === 'table'
-                    ? 'bg-google-blue text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-google-blue text-white shadow-xs'
+                    : 'bg-transparent text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <FileText className="w-4 h-4" />
                 <span>Detailed File List ({auditData.files?.length || 0})</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('tree')}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition-all ${
+                className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-black transition-all border-0 ${
                   activeTab === 'tree'
-                    ? 'bg-google-blue text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-google-blue text-white shadow-xs'
+                    : 'bg-transparent text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <FolderTree className="w-4 h-4" />
                 <span>Drive Tree Inspector</span>
               </button>
             </div>
