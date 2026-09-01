@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Link2, Play, Layers, AlertCircle, XCircle, Folder, FileText, Loader2 } from 'lucide-react';
+import { Search, Link2, Play, Layers, AlertCircle, XCircle, Folder, FileText, Loader2, Sliders } from 'lucide-react';
 import { extractDriveFolderId } from '../utils/driveUrlParser';
 
 export default function DriveUrlInput({
@@ -15,6 +15,7 @@ export default function DriveUrlInput({
   onLogin
 }) {
   const [errorMsg, setErrorMsg] = useState('');
+  const [isCustomDepth, setIsCustomDepth] = useState(false);
 
   const handleScanClick = (e) => {
     e.preventDefault();
@@ -39,7 +40,22 @@ export default function DriveUrlInput({
     setErrorMsg('');
   };
 
-  // Parse progress info (can be object, string, or null)
+  const handleSelectDepthChange = (e) => {
+    const val = e.target.value;
+    if (val === 'custom') {
+      setIsCustomDepth(true);
+    } else {
+      setIsCustomDepth(false);
+      setScanDepth(Number(val));
+    }
+  };
+
+  const handleCustomDepthInputChange = (e) => {
+    const num = Math.max(1, Math.min(20, Number(e.target.value) || 1));
+    setScanDepth(num);
+  };
+
+  // Parse progress info safely
   const currentPathText = scanProgress && typeof scanProgress === 'object' && scanProgress.currentPath
     ? scanProgress.currentPath
     : (typeof scanProgress === 'string' ? scanProgress : 'Analyzing folder hierarchy...');
@@ -95,21 +111,53 @@ export default function DriveUrlInput({
             />
           </div>
 
-          {/* Depth Selector */}
+          {/* Depth Selector & Custom Depth Input */}
           <div className="flex items-center space-x-1.5 bg-gray-50 border border-gray-300 rounded-xl px-3 py-1">
-            <Layers className="w-4 h-4 text-gray-500" />
+            <Layers className="w-4 h-4 text-gray-500 shrink-0" />
             <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Depth:</span>
-            <select
-              value={scanDepth}
-              onChange={(e) => setScanDepth(Number(e.target.value))}
-              disabled={isScanning}
-              className="bg-transparent text-xs font-semibold text-gray-900 border-none focus:ring-0 cursor-pointer pr-1 py-1"
-            >
-              <option value={2}>2 Levels</option>
-              <option value={3}>3 Levels</option>
-              <option value={4}>4 Levels (Default)</option>
-              <option value={5}>5 Levels</option>
-            </select>
+            
+            {isCustomDepth ? (
+              <div className="flex items-center space-x-1">
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={scanDepth}
+                  onChange={handleCustomDepthInputChange}
+                  disabled={isScanning}
+                  className="w-14 px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-bold text-gray-900 text-center focus:ring-1 focus:ring-google-blue"
+                  title="Enter custom depth level (1 to 20)"
+                />
+                <span className="text-xs text-gray-500 font-medium">Levels</span>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomDepth(false)}
+                  className="text-[10px] text-google-blue hover:underline font-semibold ml-1"
+                  title="Switch back to presets"
+                >
+                  Presets
+                </button>
+              </div>
+            ) : (
+              <select
+                value={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(scanDepth) ? scanDepth : 'custom'}
+                onChange={handleSelectDepthChange}
+                disabled={isScanning}
+                className="bg-transparent text-xs font-semibold text-gray-900 border-none focus:ring-0 cursor-pointer pr-1 py-1"
+              >
+                <option value={1}>1 Level</option>
+                <option value={2}>2 Levels</option>
+                <option value={3}>3 Levels</option>
+                <option value={4}>4 Levels (Default)</option>
+                <option value={5}>5 Levels</option>
+                <option value={6}>6 Levels</option>
+                <option value={7}>7 Levels</option>
+                <option value={8}>8 Levels</option>
+                <option value={9}>9 Levels</option>
+                <option value={10}>10 Levels</option>
+                <option value="custom">&plus; Custom Level...</option>
+              </select>
+            )}
           </div>
 
           {/* Scan Action Button or Cancel Button */}
@@ -168,7 +216,7 @@ export default function DriveUrlInput({
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center space-x-2 font-bold text-google-blue">
                 <Loader2 className="w-4 h-4 animate-spin text-google-blue shrink-0" />
-                <span>Auditing Google Drive Folder Structure...</span>
+                <span>Auditing Google Drive Folder Structure (Depth: {scanDepth} Levels)...</span>
               </div>
 
               {/* Counters */}
