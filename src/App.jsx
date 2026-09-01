@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Navbar from './components/Navbar';
 import DriveUrlInput from './components/DriveUrlInput';
 import StatsCards from './components/StatsCards';
@@ -47,12 +47,15 @@ export default function App() {
   const [scanDepth, setScanDepth] = useState(4);
 
   const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState('');
+  const [scanProgress, setScanProgress] = useState(null);
   const [scanError, setScanError] = useState('');
   const [activeTab, setActiveTab] = useState('matrix'); // 'matrix', 'table', 'tree'
 
   // Current active audit data
   const [auditData, setAuditData] = useState(null);
+
+  // Cancellation controller ref
+  const abortControllerRef = useRef(null);
 
   // Calculate 18 weeks of date ranges
   const weekRanges = useMemo(() => {
@@ -122,6 +125,16 @@ export default function App() {
     setAuditData(null);
   };
 
+  // Cancel Scan
+  const handleCancelScan = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsScanning(false);
+    setScanProgress(null);
+  };
+
   // Run Drive Scan
   const handleStartScan = async (folderIdOverride) => {
     setScanError('');
@@ -142,19 +155,38 @@ export default function App() {
       return;
     }
 
+    // Cancel any previous ongoing scan
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsScanning(true);
+    setScanProgress('Initializing scan...');
 
     try {
-      const result = await scanDriveFolder(folderId, accessToken, scanDepth, (statusMsg) => {
-        setScanProgress(statusMsg);
-      });
+      const result = await scanDriveFolder(
+        folderId,
+        accessToken,
+        scanDepth,
+        (progressInfo) => {
+          setScanProgress(progressInfo);
+        },
+        controller.signal
+      );
       setAuditData(result);
     } catch (err) {
+      if (err.name === 'AbortError' || err.message?.includes('cancelled')) {
+        console.log('Drive scan was cancelled by user.');
+        return;
+      }
       console.error('Scan Error:', err);
       setScanError(err.message || 'An error occurred while scanning the Google Drive folder. Please check your folder link and permissions.');
     } finally {
       setIsScanning(false);
-      setScanProgress('');
+      setScanProgress(null);
+      abortControllerRef.current = null;
     }
   };
 
@@ -176,13 +208,14 @@ export default function App() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
-        {/* Drive URL Input */}
+        {/* Drive URL Input & Progress Bar */}
         <DriveUrlInput
           driveUrl={driveUrl}
           setDriveUrl={setDriveUrl}
           scanDepth={scanDepth}
           setScanDepth={setScanDepth}
           onStartScan={handleStartScan}
+          onCancelScan={handleCancelScan}
           isScanning={isScanning}
           scanProgress={scanProgress}
           accessToken={accessToken}

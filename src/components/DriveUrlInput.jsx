@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Link2, Play, Layers, AlertCircle } from 'lucide-react';
+import { Search, Link2, Play, Layers, AlertCircle, XCircle, Folder, FileText, Loader2 } from 'lucide-react';
 import { extractDriveFolderId } from '../utils/driveUrlParser';
 
 export default function DriveUrlInput({
@@ -8,6 +8,7 @@ export default function DriveUrlInput({
   scanDepth,
   setScanDepth,
   onStartScan,
+  onCancelScan,
   isScanning,
   scanProgress,
   accessToken,
@@ -20,7 +21,7 @@ export default function DriveUrlInput({
     setErrorMsg('');
 
     if (!accessToken) {
-      onLogin(); // Prompt login instantly
+      onLogin();
       return;
     }
 
@@ -37,6 +38,14 @@ export default function DriveUrlInput({
     setDriveUrl('https://drive.google.com/drive/u/1/folders/1QRHck2OWHZmDuqqZlBJQNHLdc12ts2gu');
     setErrorMsg('');
   };
+
+  // Parse progress info (can be object or string)
+  const currentPathText = typeof scanProgress === 'object' && scanProgress?.currentPath
+    ? scanProgress.currentPath
+    : (typeof scanProgress === 'string' ? scanProgress : 'Analyzing folder hierarchy...');
+
+  const foldersCount = typeof scanProgress === 'object' ? scanProgress.foldersScanned : null;
+  const filesCount = typeof scanProgress === 'object' ? scanProgress.filesFound : null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm mb-6">
@@ -56,7 +65,8 @@ export default function DriveUrlInput({
         <button
           type="button"
           onClick={handlePasteExample}
-          className="text-xs text-google-blue hover:text-google-hover underline font-medium self-start md:self-auto"
+          disabled={isScanning}
+          className="text-xs text-google-blue hover:text-google-hover underline font-medium self-start md:self-auto disabled:opacity-50"
         >
           Paste sample folder link
         </button>
@@ -102,31 +112,26 @@ export default function DriveUrlInput({
             </select>
           </div>
 
-          {/* Scan Action Button */}
-          <button
-            type="submit"
-            disabled={isScanning}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white flex items-center justify-center space-x-2 shadow-sm transition-all whitespace-nowrap ${
-              isScanning
-                ? 'bg-google-blue/70 cursor-wait'
-                : 'bg-google-blue hover:bg-google-hover focus:ring-google-blue'
-            }`}
-          >
-            {isScanning ? (
-              <>
-                <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Scanning Drive...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 fill-white" />
-                <span>Inspect Submissions</span>
-              </>
-            )}
-          </button>
+          {/* Scan Action Button or Cancel Button */}
+          {isScanning ? (
+            <button
+              type="button"
+              onClick={onCancelScan}
+              className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-rose-600 hover:bg-rose-700 focus:ring-2 focus:ring-rose-400 flex items-center justify-center space-x-2 shadow-sm transition-all whitespace-nowrap"
+              title="Cancel the active folder scan"
+            >
+              <XCircle className="w-4 h-4" />
+              <span>Cancel Scan</span>
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-google-blue hover:bg-google-hover focus:ring-2 focus:ring-google-blue flex items-center justify-center space-x-2 shadow-sm transition-all whitespace-nowrap"
+            >
+              <Play className="w-4 h-4 fill-white" />
+              <span>Inspect Submissions</span>
+            </button>
+          )}
 
         </div>
 
@@ -155,11 +160,52 @@ export default function DriveUrlInput({
           </div>
         )}
 
-        {/* Live scanning progress update */}
-        {isScanning && scanProgress && (
-          <div className="flex items-center space-x-2 text-xs text-google-blue bg-blue-50/70 border border-blue-200 rounded-lg p-2">
-            <div className="w-2 h-2 rounded-full bg-google-blue animate-ping" />
-            <span className="truncate">{scanProgress}</span>
+        {/* Rich Live Scanning Progress Bar Card */}
+        {isScanning && (
+          <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in duration-200">
+            
+            {/* Header with animated progress status & Cancel action */}
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center space-x-2 font-bold text-google-blue">
+                <Loader2 className="w-4 h-4 animate-spin text-google-blue shrink-0" />
+                <span>Auditing Google Drive Folder Structure...</span>
+              </div>
+
+              {/* Counters */}
+              <div className="flex items-center space-x-3 text-[11px] font-semibold text-gray-700">
+                {foldersCount !== null && (
+                  <span className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-blue-100 shadow-2xs">
+                    <Folder className="w-3 h-3 text-amber-500" />
+                    <span>{foldersCount} Folders</span>
+                  </span>
+                )}
+                {filesCount !== null && (
+                  <span className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-blue-100 shadow-2xs">
+                    <FileText className="w-3 h-3 text-google-blue" />
+                    <span>{filesCount} Files</span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={onCancelScan}
+                  className="text-rose-600 hover:text-rose-800 hover:underline font-bold text-[11px] ml-1"
+                >
+                  Stop
+                </button>
+              </div>
+            </div>
+
+            {/* Animated Progress Bar */}
+            <div className="w-full bg-blue-200/70 rounded-full h-2 overflow-hidden">
+              <div className="bg-gradient-to-r from-google-blue via-indigo-500 to-google-blue h-full rounded-full animate-pulse w-full bg-[length:200%_100%]" />
+            </div>
+
+            {/* Current path breadcrumbs */}
+            <div className="text-[11px] text-gray-600 font-mono truncate bg-white/70 px-2.5 py-1 rounded-lg border border-blue-100">
+              <span className="text-gray-400 mr-1">Scanning:</span>
+              <span className="text-gray-800 font-semibold">{currentPathText}</span>
+            </div>
+
           </div>
         )}
       </form>

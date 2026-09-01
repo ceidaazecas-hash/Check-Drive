@@ -9,10 +9,11 @@ const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 /**
  * Fetch folder details by ID
  */
-export async function getFolderMetadata(folderId, accessToken) {
+export async function getFolderMetadata(folderId, accessToken, abortSignal = null) {
   const fields = 'id,name,mimeType,owners,createdTime,modifiedTime,webViewLink';
   const res = await fetch(`${DRIVE_API_BASE}/files/${folderId}?fields=${encodeURIComponent(fields)}`, {
-    headers: { Authorization: `Bearer ${accessToken}` }
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: abortSignal
   });
 
   if (!res.ok) {
@@ -26,7 +27,7 @@ export async function getFolderMetadata(folderId, accessToken) {
 /**
  * List direct children of a folder
  */
-export async function listFolderChildren(folderId, accessToken) {
+export async function listFolderChildren(folderId, accessToken, abortSignal = null) {
   const fields = 'files(id,name,mimeType,owners,lastModifyingUser,createdTime,modifiedTime,size,webViewLink,parents)';
   const q = `'${folderId}' in parents and trashed = false`;
   
@@ -34,9 +35,14 @@ export async function listFolderChildren(folderId, accessToken) {
   let pageToken = null;
 
   do {
+    if (abortSignal?.aborted) {
+      throw new DOMException('Scan cancelled by user', 'AbortError');
+    }
+
     const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields + ',nextPageToken')}&pageSize=1000${pageToken ? `&pageToken=${pageToken}` : ''}`;
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: abortSignal
     });
 
     if (!res.ok) {
@@ -57,8 +63,8 @@ export async function listFolderChildren(folderId, accessToken) {
 /**
  * Recursively scan Google Drive folder structure up to maxDepth
  */
-export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, progressCallback = null) {
-  const rootMeta = await getFolderMetadata(rootFolderId, accessToken);
+export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, progressCallback = null, abortSignal = null) {
+  const rootMeta = await getFolderMetadata(rootFolderId, accessToken, abortSignal);
   
   const allDiscoveredFiles = [];
   const folderStats = {
@@ -74,12 +80,20 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
 
   // Recursive tree crawler
   async function crawlFolder(currentFolderId, currentPath, currentDepth, studentName = '') {
-    folderStats.totalFoldersScanned++;
-    if (progressCallback) {
-      progressCallback(`Scanning folder: ${currentPath}`);
+    if (abortSignal?.aborted) {
+      throw new DOMException('Scan cancelled by user', 'AbortError');
     }
 
-    const children = await listFolderChildren(currentFolderId, accessToken);
+    folderStats.totalFoldersScanned++;
+    if (progressCallback) {
+      progressCallback({
+        currentPath,
+        foldersScanned: folderStats.totalFoldersScanned,
+        filesFound: folderStats.totalFilesFound
+      });
+    }
+
+    const children = await listFolderChildren(currentFolderId, accessToken, abortSignal);
     const subfolders = children.filter(c => c.mimeType === 'application/vnd.google-apps.folder');
     const filesInFolder = children.filter(c => c.mimeType !== 'application/vnd.google-apps.folder');
 
@@ -96,6 +110,10 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
     if (filesInFolder.length > 0) {
       folderStats.submittedFoldersCount++;
       for (const f of filesInFolder) {
+        if (abortSignal?.aborted) {
+          throw new DOMException('Scan cancelled by user', 'AbortError');
+        }
+
         folderStats.totalFilesFound++;
         const owner = f.owners && f.owners[0] ? f.owners[0] : {};
         const ownerName = owner.displayName || 'Unknown';
@@ -103,6 +121,10 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
         const lastModBy = f.lastModifyingUser?.displayName || ownerName;
 
         if (ownerEmail) submitterEmails.add(ownerEmail);
+
+        // Detect milestone / week
+        const pathParts = currentPath.split(' > ');
+        const folderLeaf = pathParts[pathParts.length - 1] || 'General';
 
         const processedFile = {
           id: f.id,
@@ -119,6 +141,7 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
           lastModifiedBy: lastModBy,
           folderPath: `${currentPath}`,
           studentName: studentName || 'General',
+          milestone: folderLeaf,
           webViewLink: f.webViewLink || `https://drive.google.com/file/d/${f.id}/view`
         };
 
@@ -140,7 +163,10 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
     // Recurse into subfolders if within maxDepth
     if (currentDepth < maxDepth) {
       for (const sf of subfolders) {
-        const nextStudent = (currentDepth === 1) ? sf.name.replace(/ - Major.*$/, '').trim() : studentName;
+        if (abortSignal?.aborted) {
+          throw new DOMException('Scan cancelled by user', 'AbortError');
+        }
+        const nextStudent = (currentDepth === 1) ? sf.name.replace(/ - (Major|Computer|Assignment).*$/, '').trim() : studentName;
         const sfPath = `${currentPath} > ${sf.name}`;
         const childNode = await crawlFolder(sf.id, sfPath, currentDepth + 1, nextStudent);
         treeNode.children.push(childNode);
@@ -158,59 +184,75 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
   folderStats.studentFoldersCount = firstLevelFolders.length;
   folderStats.uniqueSubmittersCount = submitterEmails.size;
 
-  // Build matrix rows and column headers (weeks / milestones / categories)
-  const milestoneSet = new Set();
-  const matrixRows = firstLevelFolders.map(studentNode => {
-    const studentName = studentNode.name;
-    const submissions = {};
+  // Build matrix rows and dynamic milestones
+  const allLeafMilestones = new Set();
+  const matrixRows = [];
+
+  for (const studentFolder of firstLevelFolders) {
+    const studentName = studentFolder.name;
+    const studentSubmissions = {};
     let studentSubmittedCount = 0;
     let studentEmptyCount = 0;
 
-    // Collect all leaf subfolders and folders containing files under this student
-    function collectMilestones(node) {
+    // Traverse student tree to collect milestone subfolders
+    function collectStudentMilestones(node) {
       if (node.type === 'folder') {
-        const subfolderChildren = node.children.filter(c => c.type === 'folder');
-        const fileChildren = node.children.filter(c => c.type === 'file');
+        const hasFiles = node.children.some(c => c.type === 'file');
+        const hasSubfolders = node.children.some(c => c.type === 'folder');
 
-        // If this folder has no child subfolders OR contains direct files, it is a milestone column!
-        if (subfolderChildren.length === 0 || fileChildren.length > 0) {
-          const colName = node.name.replace(/\s*\(EMPTY\)/i, '');
-          milestoneSet.add(colName);
-          const isFolderEmpty = fileChildren.length === 0;
-
-          if (isFolderEmpty) studentEmptyCount++;
-          else studentSubmittedCount++;
-
-          submissions[colName] = {
-            isFolderEmpty,
-            folderPath: node.name,
-            files: fileChildren.map(f => ({ name: f.name, date: f.time, owner: f.owner, link: f.webViewLink }))
-          };
+        if (!hasSubfolders || hasFiles) {
+          allLeafMilestones.add(node.name);
+          const files = node.children.filter(c => c.type === 'file');
+          if (files.length > 0) {
+            studentSubmissions[node.name] = {
+              status: 'submitted',
+              files: files.map(f => ({ name: f.name, date: f.time, webViewLink: f.webViewLink })),
+              isFolderEmpty: false
+            };
+            studentSubmittedCount += files.length;
+          } else {
+            studentSubmissions[node.name] = {
+              status: 'empty',
+              files: [],
+              isFolderEmpty: true
+            };
+            studentEmptyCount++;
+          }
         }
 
-        // Always recurse into child subfolders to capture all nested milestone folders
-        subfolderChildren.forEach(childFolder => collectMilestones(childFolder));
+        for (const child of node.children) {
+          if (child.type === 'folder') {
+            collectStudentMilestones(child);
+          }
+        }
       }
     }
 
-    studentNode.children.forEach(c => collectMilestones(c));
+    collectStudentMilestones(studentFolder);
 
-    return {
+    matrixRows.push({
       studentName,
-      folderPath: `${rootMeta.name} > ${studentNode.name}`,
+      submissions: studentSubmissions,
       submittedCount: studentSubmittedCount,
-      emptyCount: studentEmptyCount,
-      submissions
-    };
+      emptyCount: studentEmptyCount
+    });
+  }
+
+  // Natural sort milestone column names
+  const sortedMilestones = Array.from(allLeafMilestones).sort((a, b) => {
+    const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
+    const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
+    if (numA && numB && numA !== numB) return numA - numB;
+    return a.localeCompare(b);
   });
 
   return {
     rootFolder: rootMeta,
-    scannedAt: new Date().toISOString(),
     stats: folderStats,
     files: allDiscoveredFiles,
-    milestones: Array.from(milestoneSet),
     matrixRows,
-    tree: rootTree
+    milestones: sortedMilestones,
+    tree: rootTree,
+    scannedAt: new Date().toISOString()
   };
 }
