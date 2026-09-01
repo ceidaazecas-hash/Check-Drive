@@ -7,11 +7,11 @@ import { exportMatrixToCSV } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
 const CATEGORY_THEMES = [
-  { name: 'blue', bg: 'bg-blue-50/90', headerBg: 'bg-blue-100/70', border: 'border-blue-200', text: 'text-blue-900', pill: 'bg-blue-50 text-blue-800 border-blue-200' },
-  { name: 'purple', bg: 'bg-purple-50/90', headerBg: 'bg-purple-100/70', border: 'border-purple-200', text: 'text-purple-900', pill: 'bg-purple-50 text-purple-800 border-purple-200' },
-  { name: 'emerald', bg: 'bg-emerald-50/90', headerBg: 'bg-emerald-100/70', border: 'border-emerald-200', text: 'text-emerald-900', pill: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  { name: 'amber', bg: 'bg-amber-50/90', headerBg: 'bg-amber-100/70', border: 'border-amber-200', text: 'text-amber-900', pill: 'bg-amber-50 text-amber-800 border-amber-200' },
-  { name: 'indigo', bg: 'bg-indigo-50/90', headerBg: 'bg-indigo-100/70', border: 'border-indigo-200', text: 'text-indigo-900', pill: 'bg-indigo-50 text-indigo-800 border-indigo-200' }
+  { name: 'blue', bg: 'bg-blue-50/90', headerBg: 'bg-blue-100/80', border: 'border-blue-200', text: 'text-blue-900', tileContainer: 'bg-blue-50/40 border-blue-200/60' },
+  { name: 'purple', bg: 'bg-purple-50/90', headerBg: 'bg-purple-100/80', border: 'border-purple-200', text: 'text-purple-900', tileContainer: 'bg-purple-50/40 border-purple-200/60' },
+  { name: 'emerald', bg: 'bg-emerald-50/90', headerBg: 'bg-emerald-100/80', border: 'border-emerald-200', text: 'text-emerald-900', tileContainer: 'bg-emerald-50/40 border-emerald-200/60' },
+  { name: 'amber', bg: 'bg-amber-50/90', headerBg: 'bg-amber-100/80', border: 'border-amber-200', text: 'text-amber-900', tileContainer: 'bg-amber-50/40 border-amber-200/60' },
+  { name: 'indigo', bg: 'bg-indigo-50/90', headerBg: 'bg-indigo-100/80', border: 'border-indigo-200', text: 'text-indigo-900', tileContainer: 'bg-indigo-50/40 border-indigo-200/60' }
 ];
 
 export default function SubmissionMatrix({
@@ -27,7 +27,6 @@ export default function SubmissionMatrix({
   const [filterStatus, setFilterStatus] = useState('all');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
   const [layoutMode, setLayoutMode] = useState('heatmap'); // 'heatmap' (0-scroll), 'cards' (0-scroll), 'table' (full)
-  const [viewDensity, setViewDensity] = useState('compact'); // 'compact', 'standard', 'detailed'
   const [selectedCell, setSelectedCell] = useState(null);
 
   if (!matrixRows || matrixRows.length === 0) return null;
@@ -87,7 +86,7 @@ export default function SubmissionMatrix({
             <h3 className="text-base font-bold text-gray-900">Submission Audit Matrix</h3>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            Track student submissions across all folders. Toggle layout below to fit all columns without scrolling!
+            Clear hierarchy: <strong>Main Parent Folder</strong> &rarr; <strong>Subfolder / Milestone</strong>.
           </p>
         </div>
 
@@ -165,16 +164,16 @@ export default function SubmissionMatrix({
         </div>
       </div>
 
-      {/* Category Filter Pills (Focus on 1 Category without horizontal scroll) */}
+      {/* Category Filter Pills */}
       {groups.length > 1 && (
-        <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-1.5 overflow-x-auto text-xs">
+        <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-1.5 overflow-x-auto text-xs">
           <span className="text-gray-500 font-semibold mr-1 flex items-center gap-1">
-            <Filter className="w-3 h-3 text-gray-400" />
-            Category:
+            <Filter className="w-3.5 h-3.5 text-gray-400" />
+            Category Filter:
           </span>
           <button
             onClick={() => setActiveCategoryFilter('all')}
-            className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] ${
+            className={`px-3 py-1 rounded-xl font-bold transition-all text-xs ${
               activeCategoryFilter === 'all'
                 ? 'bg-google-blue text-white shadow-2xs'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
@@ -189,14 +188,15 @@ export default function SubmissionMatrix({
               <button
                 key={g.categoryName}
                 onClick={() => setActiveCategoryFilter(g.categoryName)}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] flex items-center gap-1 border ${
+                className={`px-3 py-1 rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 border ${
                   isSelected
                     ? 'bg-gray-900 text-white border-gray-900 shadow-2xs'
                     : `${theme.bg} ${theme.text} ${theme.border} hover:opacity-80`
                 }`}
               >
+                <Folder className="w-3 h-3 opacity-70" />
                 <span>{g.categoryName}</span>
-                <span className="opacity-60 text-[10px]">({g.columns.length})</span>
+                <span className="opacity-60 text-[11px]">({g.columns.length})</span>
               </button>
             );
           })}
@@ -204,33 +204,70 @@ export default function SubmissionMatrix({
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 1: ZERO-HORIZONTAL-SCROLL FIT-SCREEN HEATMAP (The user's favorite!) */}
+      {/* MODE 1: ZERO-HORIZONTAL-SCROLL FIT-SCREEN HEATMAP WITH CLEAR MAIN HEADERS */}
       {/* ========================================================================= */}
       {layoutMode === 'heatmap' && (
         <div className="w-full divide-y divide-gray-200">
           
-          {/* Column Names Bar */}
-          <div className="p-3 bg-gray-100/90 border-b border-gray-200 flex items-center justify-between text-[11px] font-bold text-gray-600">
-            <span className="w-52 shrink-0">Student ({filteredRows.length})</span>
-            <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden px-2">
-              <span className="text-[10px] text-gray-400 font-medium mr-2 hidden md:inline">
-                Hover or click any tile for file details &rarr;
+          {/* 2-Tier Header Bar above Heatmap */}
+          <div className="bg-gray-100/90 border-b border-gray-200 text-xs select-none">
+            
+            {/* Tier 1: Main Parent Folder Category Bar */}
+            <div className="flex items-center p-2 px-4 gap-2 border-b border-gray-200/80">
+              <span className="w-52 shrink-0 font-extrabold text-gray-700 text-xs uppercase tracking-wider">
+                Student Name ({filteredRows.length})
               </span>
-              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                ✓ On Time
-              </span>
-              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                L Late
-              </span>
-              <span className="flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                ✕ Missing
+
+              {/* Grouped Parent Category Blocks */}
+              <div className="flex-1 flex items-center justify-end gap-2">
+                {visibleGroups.map((group, gIdx) => {
+                  const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
+                  return (
+                    <div
+                      key={group.categoryName}
+                      style={{ flex: group.columns.length }}
+                      className={`py-1 px-2 rounded-lg border ${theme.headerBg} ${theme.border} ${theme.text} text-[11px] font-black text-center truncate flex items-center justify-center gap-1 shadow-2xs`}
+                      title={`Main Folder: ${group.categoryName} (${group.columns.length} subfolders)`}
+                    >
+                      <Folder className="w-3 h-3 opacity-75 shrink-0" />
+                      <span className="truncate">{group.categoryName}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <span className="w-20 text-right shrink-0 font-extrabold text-gray-700 text-xs uppercase tracking-wider">
+                Progress
               </span>
             </div>
-            <span className="w-20 text-right shrink-0">Progress</span>
+
+            {/* Tier 2: Subfolder Labels Bar */}
+            <div className="flex items-center p-1 px-4 gap-2 text-[10px] font-bold text-gray-500 bg-gray-50">
+              <span className="w-52 shrink-0 text-gray-400 italic">Click tile for details</span>
+
+              <div className="flex-1 flex items-center justify-end gap-2">
+                {visibleGroups.map((group, gIdx) => (
+                  <div key={group.categoryName} style={{ flex: group.columns.length }} className="flex gap-1 justify-between">
+                    {group.columns.map(col => (
+                      <div
+                        key={col.key}
+                        className="flex-1 min-w-[22px] max-w-[42px] text-center truncate text-[9px] text-gray-600 font-bold"
+                        title={`${group.categoryName} > ${col.subfolder}`}
+                      >
+                        {col.subfolder.replace(/Week\s+/i, 'W').slice(0, 4)}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              <span className="w-20 text-right shrink-0 text-gray-400">Rate</span>
+            </div>
+
           </div>
 
           {/* Student Rows */}
-          <div className="divide-y divide-gray-100 max-h-[72vh] overflow-y-auto">
+          <div className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
             {filteredRows.map((row, rIdx) => {
               const totalItems = visibleFlattenedCols.length;
               const submittedCount = visibleFlattenedCols.filter(col => {
@@ -260,71 +297,82 @@ export default function SubmissionMatrix({
                     </div>
                   </div>
 
-                  {/* All Milestone Tiles (Fitting 100% horizontally on screen with NO SCROLL!) */}
-                  <div className="flex-1 flex items-center justify-end gap-1 flex-wrap sm:flex-nowrap">
-                    {visibleFlattenedCols.map((col, cIdx) => {
-                      const cellData = row.submissions[col.key];
-                      const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
-
-                      if (!cellData) {
-                        return (
-                          <div
-                            key={col.key}
-                            className="flex-1 min-w-[24px] max-w-[42px] h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] text-gray-300 font-bold"
-                            title={`${col.category} > ${col.subfolder}: Not assigned`}
-                          >
-                            &mdash;
-                          </div>
-                        );
-                      }
-
-                      if (cellData.isFolderEmpty) {
-                        return (
-                          <button
-                            key={col.key}
-                            onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate: false, statusInfo: { label: 'Empty' } })}
-                            className="flex-1 min-w-[24px] max-w-[42px] h-8 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 flex flex-col items-center justify-center text-rose-700 font-extrabold text-[10px] transition-all shadow-2xs group relative"
-                            title={`${col.category} > ${col.subfolder}: EMPTY (0 files)`}
-                          >
-                            <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                            <span className="text-[8px] opacity-70 leading-none truncate max-w-full px-0.5">
-                              {col.subfolder.replace(/Week\s+/i, 'W').slice(0, 4)}
-                            </span>
-                          </button>
-                        );
-                      }
-
-                      // Check if files are late
-                      const firstFile = cellData.files[0];
-                      const fileDateIso = firstFile?.dateIso || firstFile?.date;
-                      const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
-                      const isLate = statusInfo.isLate;
-
+                  {/* Category Grouped Milestone Tiles */}
+                  <div className="flex-1 flex items-center justify-end gap-2">
+                    {visibleGroups.map((group, gIdx) => {
+                      const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
                       return (
-                        <button
-                          key={col.key}
-                          onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
-                          className={`flex-1 min-w-[24px] max-w-[42px] h-8 rounded-lg flex flex-col items-center justify-center font-extrabold text-[10px] transition-all shadow-2xs border cursor-pointer hover:scale-105 ${
-                            isLate
-                              ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
-                              : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
-                          }`}
-                          title={`${col.category} > ${col.subfolder}: ${isLate ? `Late (${statusInfo.label})` : 'Submitted On Time'}\nFile: ${firstFile?.name || ''}`}
+                        <div
+                          key={group.categoryName}
+                          style={{ flex: group.columns.length }}
+                          className={`p-1 rounded-xl border ${theme.tileContainer} flex gap-1 justify-between`}
                         >
-                          {isLate ? (
-                            <span className="text-[10px] font-black text-amber-800">L</span>
-                          ) : (
-                            <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-700" />
-                          )}
-                          <span className="text-[8px] opacity-70 leading-none truncate max-w-full px-0.5">
-                            {col.subfolder.replace(/Week\s+/i, 'W').slice(0, 4)}
-                          </span>
-                        </button>
+                          {group.columns.map(col => {
+                            const cellData = row.submissions[col.key];
+                            const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
+
+                            if (!cellData) {
+                              return (
+                                <div
+                                  key={col.key}
+                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-gray-100/80 border border-gray-200/80 flex items-center justify-center text-[10px] text-gray-300 font-bold"
+                                  title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: Not assigned`}
+                                >
+                                  &mdash;
+                                </div>
+                              );
+                            }
+
+                            if (cellData.isFolderEmpty) {
+                              return (
+                                <button
+                                  key={col.key}
+                                  onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate: false, statusInfo: { label: 'Empty' } })}
+                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 flex flex-col items-center justify-center text-rose-700 font-extrabold text-[10px] transition-all shadow-2xs cursor-pointer hover:scale-105"
+                                  title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
+                                >
+                                  <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  <span className="text-[7.5px] opacity-70 leading-none truncate max-w-full px-0.5 font-bold">
+                                    {col.subfolder.replace(/Week\s+/i, 'W').slice(0, 4)}
+                                  </span>
+                                </button>
+                              );
+                            }
+
+                            // Check if files are late
+                            const firstFile = cellData.files[0];
+                            const fileDateIso = firstFile?.dateIso || firstFile?.date;
+                            const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
+                            const isLate = statusInfo.isLate;
+
+                            return (
+                              <button
+                                key={col.key}
+                                onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
+                                className={`flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg flex flex-col items-center justify-center font-extrabold text-[10px] transition-all shadow-2xs border cursor-pointer hover:scale-105 ${
+                                  isLate
+                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                                    : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
+                                }`}
+                                title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: ${isLate ? `Late (${statusInfo.label})` : 'Submitted On Time'}\nFile: ${firstFile?.name || ''}\nUploaded: ${firstFile?.date || ''}`}
+                              >
+                                {isLate ? (
+                                  <span className="text-[10px] font-black text-amber-800 leading-none">L</span>
+                                ) : (
+                                  <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-700 leading-none" />
+                                )}
+                                <span className="text-[7.5px] opacity-70 leading-none truncate max-w-full px-0.5 font-bold">
+                                  {col.subfolder.replace(/Week\s+/i, 'W').slice(0, 4)}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       );
                     })}
                   </div>
 
-                  {/* Completion Rate Pill */}
+                  {/* Completion Rate Progress */}
                   <div className="w-20 shrink-0 text-right pl-2">
                     <div className="flex flex-col items-end">
                       <span className={`text-xs font-extrabold ${pct === 100 ? 'text-emerald-700' : pct >= 75 ? 'text-blue-700' : 'text-amber-700'}`}>
@@ -348,7 +396,7 @@ export default function SubmissionMatrix({
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 2: STUDENT ACCORDION CARDS (Zero horizontal scroll, beautiful cards) */}
+      {/* MODE 2: STUDENT ACCORDION CARDS                                           */}
       {/* ========================================================================= */}
       {layoutMode === 'cards' && (
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[75vh] overflow-y-auto bg-gray-50/50">
@@ -409,7 +457,10 @@ export default function SubmissionMatrix({
                       return (
                         <div key={group.categoryName} className={`p-2.5 rounded-xl border ${theme.bg} ${theme.border}`}>
                           <div className="text-[10px] font-extrabold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                            <span>{group.categoryName}</span>
+                            <span className="flex items-center gap-1">
+                              <Folder className="w-3 h-3 opacity-70" />
+                              <span>{group.categoryName}</span>
+                            </span>
                           </div>
                           
                           <div className="flex flex-wrap gap-1.5">
@@ -471,8 +522,8 @@ export default function SubmissionMatrix({
 
                 {/* Card Footer Summary */}
                 <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500 font-semibold">
-                  <span className="text-emerald-700">✓ {submittedCount} Submitted</span>
-                  <span className="text-rose-700">✕ {emptyCount} Missing</span>
+                  <span className="text-emerald-700 font-bold">✓ {submittedCount} Submitted</span>
+                  <span className="text-rose-700 font-bold">✕ {emptyCount} Missing</span>
                 </div>
 
               </div>
@@ -482,7 +533,7 @@ export default function SubmissionMatrix({
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 3: EXPANDED 2-TIER TABLE                                             */}
+      {/* MODE 3: EXPANDED 2-TIER FULL TABLE                                        */}
       {/* ========================================================================= */}
       {layoutMode === 'table' && (
         <div className="overflow-x-auto max-h-[75vh]">
@@ -584,7 +635,7 @@ export default function SubmissionMatrix({
                         <td key={col.key} className="py-2 px-2 text-center border-r border-gray-200 bg-rose-50/30">
                           <span
                             className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
-                            title={`Folder "${col.subfolder}" exists in "${col.category}" but is EMPTY (0 files uploaded)`}
+                            title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
                           >
                             <XCircle className="w-3 h-3 text-rose-500 shrink-0" />
                             <span>Empty</span>
@@ -608,11 +659,10 @@ export default function SubmissionMatrix({
                         }`}
                       >
                         <div className="flex flex-col items-center justify-center">
-                          
                           {isLate ? (
                             <span
                               className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-100/80 text-amber-900 border border-amber-300 shadow-2xs"
-                              title={`Uploaded late after deadline (${statusInfo.daysLate} working days late)`}
+                              title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nUploaded late (${statusInfo.daysLate} working days late)`}
                             >
                               <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
                               <span>{statusInfo.label}</span>
@@ -620,19 +670,18 @@ export default function SubmissionMatrix({
                           ) : (
                             <span
                               className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-100/80 text-emerald-900 border border-emerald-300 shadow-2xs"
-                              title="Submitted on time"
+                              title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nSubmitted on time`}
                             >
                               <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                               <span>{cellData.files.length === 1 ? '1 file' : `${cellData.files.length} files`}</span>
                             </span>
                           )}
 
-                          {viewDensity !== 'compact' && firstFile?.date && (
+                          {firstFile?.date && (
                             <span className="text-[9px] text-gray-500 font-medium mt-1 whitespace-nowrap">
                               {firstFile.date.replace(/, 202\d/, '')}
                             </span>
                           )}
-
                         </div>
                       </td>
                     );
@@ -710,6 +759,10 @@ export default function SubmissionMatrix({
                   <span className="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
                     {selectedCell.statusInfo.label}
                   </span>
+                ) : selectedCell.cellData.isFolderEmpty ? (
+                  <span className="font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
+                    ✕ Missing / Empty
+                  </span>
                 ) : (
                   <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
                     ✓ On Time
@@ -719,29 +772,33 @@ export default function SubmissionMatrix({
 
               <div className="border-t border-gray-200 pt-2 space-y-2">
                 <span className="text-gray-500 block font-semibold">Uploaded Files ({selectedCell.cellData.files.length}):</span>
-                {selectedCell.cellData.files.map((file, i) => (
-                  <div key={i} className="bg-white p-2.5 rounded-lg border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="overflow-hidden">
-                      <div className="font-semibold text-gray-900 truncate" title={file.name}>
-                        {file.name}
+                {selectedCell.cellData.files.length === 0 ? (
+                  <div className="text-gray-400 italic text-center py-2">No files uploaded to this folder yet.</div>
+                ) : (
+                  selectedCell.cellData.files.map((file, i) => (
+                    <div key={i} className="bg-white p-2.5 rounded-lg border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
+                      <div className="overflow-hidden">
+                        <div className="font-semibold text-gray-900 truncate" title={file.name}>
+                          {file.name}
+                        </div>
+                        <div className="text-[10px] text-gray-500 flex items-center gap-2 mt-0.5">
+                          <span>🕒 {file.date}</span>
+                          {file.size && <span>&bull; {file.size}</span>}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-gray-500 flex items-center gap-2 mt-0.5">
-                        <span>🕒 {file.date}</span>
-                        {file.size && <span>&bull; {file.size}</span>}
-                      </div>
-                    </div>
 
-                    <a
-                      href={file.webViewLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1 bg-google-blue hover:bg-google-hover text-white rounded-lg text-[11px] font-bold shrink-0 flex items-center gap-1 shadow-2xs"
-                    >
-                      <span>Open</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                ))}
+                      <a
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-google-blue hover:bg-google-hover text-white rounded-lg text-[11px] font-bold shrink-0 flex items-center gap-1 shadow-2xs"
+                      >
+                        <span>Open</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
