@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   CheckCircle2, XCircle, Download, Search, Info, Clock, AlertTriangle, ExternalLink,
-  User, Folder, ChevronRight, X, LayoutGrid, Table, CreditCard, Filter, ChevronDown, Check
+  User, Folder, ChevronRight, X, LayoutGrid, Table, CreditCard, Filter, ChevronDown, Check, FileText
 } from 'lucide-react';
 import { exportMatrixToExcel } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
@@ -26,7 +26,8 @@ export default function SubmissionMatrix({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
-  const [layoutMode, setLayoutMode] = useState('heatmap'); // 'heatmap' (0-scroll), 'cards' (0-scroll), 'table' (full)
+  const [layoutMode, setLayoutMode] = useState('table'); // 'heatmap' (0-scroll), 'cards' (0-scroll), 'table' (full)
+  const [tableDetailMode, setTableDetailMode] = useState('detailed'); // 'compact', 'standard', 'detailed'
   const [selectedCell, setSelectedCell] = useState(null);
 
   if (!matrixRows || matrixRows.length === 0) return null;
@@ -86,7 +87,7 @@ export default function SubmissionMatrix({
             <h3 className="text-base font-bold text-gray-900">Submission Audit Matrix</h3>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            Clear hierarchy: <strong>Main Parent Folder</strong> &rarr; <strong>Subfolder / Milestone</strong>.
+            Clear hierarchy: <strong>Main Parent Folder</strong> &rarr; <strong>Subfolder / Milestone</strong> with file names and timestamps.
           </p>
         </div>
 
@@ -116,8 +117,46 @@ export default function SubmissionMatrix({
             <option value="completed">All Submitted</option>
           </select>
 
+          {/* Table Detail Density Toggle (when in Full Table view) */}
+          {layoutMode === 'table' && (
+            <div className="flex items-center bg-gray-200/80 p-0.5 rounded-xl text-xs font-bold border border-gray-300/60 shadow-2xs">
+              <button
+                onClick={() => setTableDetailMode('compact')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${tableDetailMode === 'compact' ? 'bg-white text-google-blue shadow-2xs font-extrabold' : 'text-gray-600 hover:text-gray-900'}`}
+                title="Show solid status badges only"
+              >
+                Badges Only
+              </button>
+              <button
+                onClick={() => setTableDetailMode('standard')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${tableDetailMode === 'standard' ? 'bg-white text-google-blue shadow-2xs font-extrabold' : 'text-gray-600 hover:text-gray-900'}`}
+                title="Show status badges + upload timestamps"
+              >
+                + Time
+              </button>
+              <button
+                onClick={() => setTableDetailMode('detailed')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${tableDetailMode === 'detailed' ? 'bg-white text-google-blue shadow-2xs font-extrabold' : 'text-gray-600 hover:text-gray-900'}`}
+                title="Show status badges + exact file names + timestamps"
+              >
+                + Files & Time
+              </button>
+            </div>
+          )}
+
           {/* Layout Mode Selector (Zero Scroll Heatmap, Cards, Table) */}
           <div className="flex items-center bg-gray-200/80 p-0.5 rounded-xl text-xs font-bold border border-gray-300/60 shadow-2xs">
+            <button
+              onClick={() => setLayoutMode('table')}
+              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
+                layoutMode === 'table' ? 'bg-white text-google-blue shadow-xs font-extrabold' : 'text-gray-600 hover:text-gray-900'
+              }`}
+              title="Expanded 2-tier full table view with files & timestamps"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Full Table</span>
+            </button>
+
             <button
               onClick={() => setLayoutMode('heatmap')}
               className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
@@ -139,24 +178,13 @@ export default function SubmissionMatrix({
               <CreditCard className="w-3.5 h-3.5" />
               <span>Student Cards</span>
             </button>
-
-            <button
-              onClick={() => setLayoutMode('table')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
-                layoutMode === 'table' ? 'bg-white text-google-blue shadow-xs font-extrabold' : 'text-gray-600 hover:text-gray-900'
-              }`}
-              title="Expanded 2-tier full table view"
-            >
-              <Table className="w-3.5 h-3.5" />
-              <span>Full Table</span>
-            </button>
           </div>
 
           {/* Export Excel (.xlsx) button */}
           <button
             onClick={() => exportMatrixToExcel(matrixRows, visibleFlattenedCols, rootFolderName, weekDeadlines)}
             className="px-3.5 py-1.5 bg-[#48bb78] hover:bg-[#38a169] text-white rounded-xl text-xs font-black flex items-center space-x-1.5 shadow-sm transition-all"
-            title="Download formatted Excel (.xlsx) report with colors and merged headers"
+            title="Download formatted Excel (.xlsx) with Summary and Detailed (Files & Time) sheets"
           >
             <Download className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Export Excel (.xlsx)</span>
@@ -204,7 +232,199 @@ export default function SubmissionMatrix({
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 1: ZERO-HORIZONTAL-SCROLL FIT-SCREEN HEATMAP                         */}
+      {/* MODE 1: EXPANDED 2-TIER FULL TABLE (With Detailed Files & Time)          */}
+      {/* ========================================================================= */}
+      {layoutMode === 'table' && (
+        <div className="overflow-x-auto max-h-[75vh]">
+          <table className="w-full text-left border-collapse min-w-[950px]">
+            <thead className="sticky top-0 z-20 shadow-xs">
+              
+              {/* Tier 1: Parent Category Headers */}
+              <tr className="border-b border-gray-200 text-xs font-extrabold tracking-wide uppercase">
+                <th
+                  rowSpan={2}
+                  className="py-3.5 px-4 sticky left-0 bg-gray-100 border-r border-gray-200 z-30 w-64 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] align-middle text-gray-900"
+                >
+                  Student Name
+                </th>
+
+                {visibleGroups.map((group, gIdx) => {
+                  const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
+                  return (
+                    <th
+                      key={group.categoryName}
+                      colSpan={group.columns.length}
+                      className={`py-2.5 px-3 border-r border-gray-200 text-center ${theme.bg} ${theme.text} font-black tracking-wider text-[11px] border-b-2 ${theme.border}`}
+                    >
+                      <div className="flex items-center justify-center space-x-1.5">
+                        <Folder className="w-3.5 h-3.5 opacity-70" />
+                        <span>{group.categoryName}</span>
+                      </div>
+                    </th>
+                  );
+                })}
+
+                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-emerald-50 text-emerald-900 font-bold align-middle border-r border-gray-200">
+                  Submitted
+                </th>
+                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-rose-50 text-rose-900 font-bold align-middle">
+                  Empty
+                </th>
+              </tr>
+
+              {/* Tier 2: Subfolder Headers */}
+              <tr className="bg-gray-50/95 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                {visibleFlattenedCols.map(col => {
+                  const rangeObj = rangeLookup[col.subfolder] || rangeLookup[col.category];
+                  return (
+                    <th key={col.key} className="py-2 px-2 border-r border-gray-200 text-center min-w-[130px]">
+                      <div className="flex flex-col items-center">
+                        <span className="font-bold text-gray-800">{col.subfolder}</span>
+                        {rangeObj && (
+                          <span className="text-[9px] font-normal text-gray-500 normal-case mt-0.5">
+                            {rangeObj.formattedRange}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
+              </tr>
+
+            </thead>
+
+            <tbody className="divide-y divide-gray-200 text-xs">
+              {filteredRows.map((row, idx) => (
+                <tr key={row.studentName || idx} className={`transition-colors ${idx % 2 === 0 ? 'bg-white hover:bg-blue-50/30' : 'bg-gray-50/40 hover:bg-blue-50/30'}`}>
+                  
+                  {/* Student Name Sticky Cell */}
+                  <td className={`py-3 px-4 font-bold text-gray-900 sticky left-0 border-r border-gray-200 z-10 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-7 h-7 rounded-full bg-blue-100 text-google-blue font-bold text-[11px] flex items-center justify-center shrink-0 border border-blue-200">
+                        {getInitials(row.studentName) || 'ST'}
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="truncate max-w-[180px] text-xs text-gray-900" title={row.fullFolderName || row.studentName}>
+                          {row.studentName}
+                        </span>
+                        {row.fullFolderName && row.fullFolderName !== row.studentName && (
+                          <span className="text-[10px] text-gray-400 font-normal truncate max-w-[180px]" title={row.fullFolderName}>
+                            {row.fullFolderName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Hierarchical Column Cells */}
+                  {visibleFlattenedCols.map(col => {
+                    const cellData = row.submissions[col.key];
+                    const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
+
+                    if (!cellData) {
+                      return (
+                        <td key={col.key} className="py-3 px-2 text-center border-r border-gray-200 text-gray-300">
+                          <span className="text-sm font-light">&mdash;</span>
+                        </td>
+                      );
+                    }
+
+                    if (cellData.isFolderEmpty) {
+                      return (
+                        <td key={col.key} className="py-2.5 px-2 text-center border-r border-gray-200 bg-rose-50/30">
+                          <span
+                            className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#f56565] text-white border border-[#e53e3e] shadow-2xs"
+                            title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
+                          >
+                            <X className="w-3 h-3 stroke-[3] text-white shrink-0" />
+                            <span>Empty</span>
+                          </span>
+                        </td>
+                      );
+                    }
+
+                    // Check if files are late
+                    const firstFile = cellData.files[0];
+                    const fileDateIso = firstFile?.dateIso || firstFile?.date;
+                    const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
+                    const isLate = statusInfo.isLate;
+
+                    return (
+                      <td
+                        key={col.key}
+                        onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
+                        className={`py-2 px-2 text-center border-r border-gray-200 cursor-pointer transition-all hover:ring-2 hover:ring-google-blue/40 ${
+                          isLate ? 'bg-amber-50/40 hover:bg-amber-100/50' : 'bg-emerald-50/20 hover:bg-emerald-100/40'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center justify-center py-1">
+                          
+                          {/* Solid Status Badge */}
+                          {isLate ? (
+                            <span
+                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border border-[#ed8936] shadow-2xs"
+                              title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nUploaded late (${statusInfo.daysLate} working days late)`}
+                            >
+                              <span className="text-[10px] font-black text-white leading-none">L</span>
+                              <span>{statusInfo.label}</span>
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#48bb78] text-white border border-[#38a169] shadow-2xs"
+                              title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nSubmitted on time`}
+                            >
+                              <Check className="w-3 h-3 stroke-[3] text-white shrink-0" />
+                              <span>{cellData.files.length === 1 ? '1 file' : `${cellData.files.length} files`}</span>
+                            </span>
+                          )}
+
+                          {/* Detailed View: File Name (Clickable link) */}
+                          {tableDetailMode === 'detailed' && firstFile?.name && (
+                            <a
+                              href={firstFile.webViewLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[9.5px] font-bold text-google-blue hover:text-blue-800 hover:underline truncate max-w-[125px] block mt-1.5 flex items-center gap-0.5 shadow-2xs bg-blue-50/90 px-1.5 py-0.5 rounded border border-blue-200/70"
+                              title={`Open ${firstFile.name} in Google Drive`}
+                            >
+                              <span className="truncate">{firstFile.name}</span>
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                            </a>
+                          )}
+
+                          {/* Standard & Detailed View: Upload Date & Time */}
+                          {tableDetailMode !== 'compact' && firstFile?.date && (
+                            <span className="text-[9px] text-gray-500 font-mono mt-1 whitespace-nowrap flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-gray-400" />
+                              <span>{firstFile.date}</span>
+                            </span>
+                          )}
+
+                        </div>
+                      </td>
+                    );
+                  })}
+
+                  {/* Submitted Total Count */}
+                  <td className="py-3 px-3 text-center border-r border-gray-200 font-bold text-[#48bb78] bg-emerald-50/20">
+                    {row.submittedCount}
+                  </td>
+
+                  {/* Empty Folders Count */}
+                  <td className="py-3 px-3 text-center font-bold text-[#f56565] bg-rose-50/20">
+                    {row.emptyCount}
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODE 2: ZERO-HORIZONTAL-SCROLL FIT-SCREEN HEATMAP                         */}
       {/* ========================================================================= */}
       {layoutMode === 'heatmap' && (
         <div className="w-full divide-y divide-gray-200">
@@ -356,7 +576,7 @@ export default function SubmissionMatrix({
                             const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
                             const isLate = statusInfo.isLate;
 
-                            // Late: Solid Baby Yellow/Amber with White L
+                            // Late: Solid Baby Yellow with White L
                             // On Time: Solid Baby Green with White Check ✓
                             return (
                               <button
@@ -409,7 +629,7 @@ export default function SubmissionMatrix({
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 2: STUDENT ACCORDION CARDS                                           */}
+      {/* MODE 3: STUDENT ACCORDION CARDS                                           */}
       {/* ========================================================================= */}
       {layoutMode === 'cards' && (
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[75vh] overflow-y-auto bg-gray-50/50">
@@ -545,178 +765,6 @@ export default function SubmissionMatrix({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODE 3: EXPANDED 2-TIER FULL TABLE                                        */}
-      {/* ========================================================================= */}
-      {layoutMode === 'table' && (
-        <div className="overflow-x-auto max-h-[75vh]">
-          <table className="w-full text-left border-collapse min-w-[950px]">
-            <thead className="sticky top-0 z-20 shadow-xs">
-              
-              {/* Tier 1: Parent Category Headers */}
-              <tr className="border-b border-gray-200 text-xs font-extrabold tracking-wide uppercase">
-                <th
-                  rowSpan={2}
-                  className="py-3.5 px-4 sticky left-0 bg-gray-100 border-r border-gray-200 z-30 w-64 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] align-middle text-gray-900"
-                >
-                  Student Name
-                </th>
-
-                {visibleGroups.map((group, gIdx) => {
-                  const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
-                  return (
-                    <th
-                      key={group.categoryName}
-                      colSpan={group.columns.length}
-                      className={`py-2.5 px-3 border-r border-gray-200 text-center ${theme.bg} ${theme.text} font-black tracking-wider text-[11px] border-b-2 ${theme.border}`}
-                    >
-                      <div className="flex items-center justify-center space-x-1.5">
-                        <Folder className="w-3.5 h-3.5 opacity-70" />
-                        <span>{group.categoryName}</span>
-                      </div>
-                    </th>
-                  );
-                })}
-
-                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-emerald-50 text-emerald-900 font-bold align-middle border-r border-gray-200">
-                  Submitted
-                </th>
-                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-rose-50 text-rose-900 font-bold align-middle">
-                  Empty
-                </th>
-              </tr>
-
-              {/* Tier 2: Subfolder Headers */}
-              <tr className="bg-gray-50/95 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-                {visibleFlattenedCols.map(col => {
-                  const rangeObj = rangeLookup[col.subfolder] || rangeLookup[col.category];
-                  return (
-                    <th key={col.key} className="py-2 px-2 border-r border-gray-200 text-center min-w-[125px]">
-                      <div className="flex flex-col items-center">
-                        <span className="font-bold text-gray-800">{col.subfolder}</span>
-                        {rangeObj && (
-                          <span className="text-[9px] font-normal text-gray-500 normal-case mt-0.5">
-                            {rangeObj.formattedRange}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-
-            </thead>
-
-            <tbody className="divide-y divide-gray-200 text-xs">
-              {filteredRows.map((row, idx) => (
-                <tr key={row.studentName || idx} className={`transition-colors ${idx % 2 === 0 ? 'bg-white hover:bg-blue-50/30' : 'bg-gray-50/40 hover:bg-blue-50/30'}`}>
-                  
-                  {/* Student Name Sticky Cell */}
-                  <td className={`py-3 px-4 font-bold text-gray-900 sticky left-0 border-r border-gray-200 z-10 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-7 h-7 rounded-full bg-blue-100 text-google-blue font-bold text-[11px] flex items-center justify-center shrink-0 border border-blue-200">
-                        {getInitials(row.studentName) || 'ST'}
-                      </div>
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="truncate max-w-[180px] text-xs text-gray-900" title={row.fullFolderName || row.studentName}>
-                          {row.studentName}
-                        </span>
-                        {row.fullFolderName && row.fullFolderName !== row.studentName && (
-                          <span className="text-[10px] text-gray-400 font-normal truncate max-w-[180px]" title={row.fullFolderName}>
-                            {row.fullFolderName}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Hierarchical Column Cells */}
-                  {visibleFlattenedCols.map(col => {
-                    const cellData = row.submissions[col.key];
-                    const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
-
-                    if (!cellData) {
-                      return (
-                        <td key={col.key} className="py-3 px-2 text-center border-r border-gray-200 text-gray-300">
-                          <span className="text-sm font-light">&mdash;</span>
-                        </td>
-                      );
-                    }
-
-                    if (cellData.isFolderEmpty) {
-                      return (
-                        <td key={col.key} className="py-2 px-2 text-center border-r border-gray-200 bg-rose-50/30">
-                          <span
-                            className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#f56565] text-white border border-[#e53e3e] shadow-2xs"
-                            title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
-                          >
-                            <X className="w-3 h-3 stroke-[3] text-white shrink-0" />
-                            <span>Empty</span>
-                          </span>
-                        </td>
-                      );
-                    }
-
-                    // Check if files are late
-                    const firstFile = cellData.files[0];
-                    const fileDateIso = firstFile?.dateIso || firstFile?.date;
-                    const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
-                    const isLate = statusInfo.isLate;
-
-                    return (
-                      <td
-                        key={col.key}
-                        onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
-                        className={`py-2 px-2 text-center border-r border-gray-200 cursor-pointer transition-all hover:ring-2 hover:ring-google-blue/40 ${
-                          isLate ? 'bg-amber-50/40 hover:bg-amber-100/50' : 'bg-emerald-50/20 hover:bg-emerald-100/40'
-                        }`}
-                      >
-                        <div className="flex flex-col items-center justify-center">
-                          {isLate ? (
-                            <span
-                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border border-[#ed8936] shadow-2xs"
-                              title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nUploaded late (${statusInfo.daysLate} working days late)`}
-                            >
-                              <span className="text-[10px] font-black text-white leading-none">L</span>
-                              <span>{statusInfo.label}</span>
-                            </span>
-                          ) : (
-                            <span
-                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#48bb78] text-white border border-[#38a169] shadow-2xs"
-                              title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nSubmitted on time`}
-                            >
-                              <Check className="w-3 h-3 stroke-[3] text-white shrink-0" />
-                              <span>{cellData.files.length === 1 ? '1 file' : `${cellData.files.length} files`}</span>
-                            </span>
-                          )}
-
-                          {firstFile?.date && (
-                            <span className="text-[9px] text-gray-500 font-medium mt-1 whitespace-nowrap">
-                              {firstFile.date.replace(/, 202\d/, '')}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-
-                  {/* Submitted Total Count */}
-                  <td className="py-3 px-3 text-center border-r border-gray-200 font-bold text-[#48bb78] bg-emerald-50/20">
-                    {row.submittedCount}
-                  </td>
-
-                  {/* Empty Folders Count */}
-                  <td className="py-3 px-3 text-center font-bold text-[#f56565] bg-rose-50/20">
-                    {row.emptyCount}
-                  </td>
-
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
       {/* Footer Legend */}
       <div className="p-3.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-4">
@@ -735,7 +783,7 @@ export default function SubmissionMatrix({
         </div>
 
         <span className="text-xs text-gray-500 font-semibold">
-          Showing {filteredRows.length} of {matrixRows.length} Students &bull; <span className="text-google-blue">Click any tile for file details</span>
+          Showing {filteredRows.length} of {matrixRows.length} Students &bull; <span className="text-google-blue">Click any cell for complete file details</span>
         </span>
       </div>
 
