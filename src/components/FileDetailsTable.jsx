@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, ExternalLink, Search, User, Calendar, Folder, ArrowUpDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { FileText, Download, ExternalLink, Search, User, Calendar, Folder, ArrowUpDown, AlertTriangle, CheckCircle2, Check } from 'lucide-react';
 import { exportFilesToCSV } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
@@ -222,13 +222,13 @@ export default function FileDetailsTable({ files, rootFolderName, weekDeadlines 
                     {/* Status Badge */}
                     <td className="py-3 px-4 text-center">
                       {statusInfo.isLate ? (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                          <AlertTriangle className="w-3 h-3 text-amber-600" />
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border border-[#ed8936] shadow-2xs">
+                          <span className="font-black text-white text-[10px]">L</span>
                           <span>{statusInfo.label}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#48bb78] text-white border border-[#38a169] shadow-2xs">
+                          <Check className="w-3 h-3 stroke-[3] text-white" />
                           <span>On Time</span>
                         </span>
                       )}

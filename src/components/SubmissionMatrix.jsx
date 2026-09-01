@@ -82,7 +82,7 @@ export default function SubmissionMatrix({
       <div className="p-4 sm:p-5 border-b border-gray-200 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-gray-50/70">
         <div>
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <CheckCircle2 className="w-5 h-5 text-[#48bb78]" />
             <h3 className="text-base font-bold text-gray-900">Submission Audit Matrix</h3>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -155,7 +155,7 @@ export default function SubmissionMatrix({
           {/* Export CSV button */}
           <button
             onClick={() => exportMatrixToCSV(matrixRows, visibleFlattenedCols, rootFolderName, weekDeadlines)}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-colors"
+            className="px-3 py-1.5 bg-[#48bb78] hover:bg-[#38a169] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-colors"
             title="Download clean matrix report as CSV/Excel (Main Folder, Subfolder, Submitted, Late, Empty)"
           >
             <Download className="w-3.5 h-3.5" />
@@ -204,7 +204,7 @@ export default function SubmissionMatrix({
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 1: ZERO-HORIZONTAL-SCROLL FIT-SCREEN HEATMAP WITH CLEAR MAIN HEADERS */}
+      {/* MODE 1: ZERO-HORIZONTAL-SCROLL FIT-SCREEN HEATMAP                         */}
       {/* ========================================================================= */}
       {layoutMode === 'heatmap' && (
         <div className="w-full divide-y divide-gray-200">
@@ -241,9 +241,19 @@ export default function SubmissionMatrix({
               </span>
             </div>
 
-            {/* Tier 2: Subfolder Labels Bar */}
-            <div className="flex items-center p-1 px-4 gap-2 text-[10px] font-bold text-gray-500 bg-gray-50">
-              <span className="w-52 shrink-0 text-gray-400 italic">Click tile for details</span>
+            {/* Tier 2: Subfolder Labels Bar & Legend */}
+            <div className="flex items-center p-1.5 px-4 gap-2 text-[10px] font-bold text-gray-500 bg-gray-50">
+              <div className="w-52 shrink-0 flex items-center gap-1.5">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#48bb78] text-white font-extrabold text-[9px] shadow-2xs">
+                  ✓ On Time
+                </span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#f6ad55] text-white font-extrabold text-[9px] shadow-2xs">
+                  L Late
+                </span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#f56565] text-white font-extrabold text-[9px] shadow-2xs">
+                  ✕ Missing
+                </span>
+              </div>
 
               <div className="flex-1 flex items-center justify-end gap-2">
                 {visibleGroups.map((group, gIdx) => (
@@ -315,7 +325,7 @@ export default function SubmissionMatrix({
                               return (
                                 <div
                                   key={col.key}
-                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-gray-100/80 border border-gray-200/80 flex items-center justify-center text-[10px] text-gray-300 font-bold"
+                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-gray-200/90 border border-gray-300/60 flex items-center justify-center text-[10px] text-gray-400 font-bold"
                                   title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: Not assigned`}
                                 >
                                   &mdash;
@@ -323,16 +333,17 @@ export default function SubmissionMatrix({
                               );
                             }
 
+                            // Empty Submission: Solid Baby Red with White X
                             if (cellData.isFolderEmpty) {
                               return (
                                 <button
                                   key={col.key}
                                   onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate: false, statusInfo: { label: 'Empty' } })}
-                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 flex flex-col items-center justify-center text-rose-700 font-extrabold text-[10px] transition-all shadow-2xs cursor-pointer hover:scale-105"
+                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-[#f56565] hover:bg-[#e53e3e] border border-[#e53e3e] flex flex-col items-center justify-center text-white font-extrabold text-[10px] transition-all shadow-2xs cursor-pointer hover:scale-105"
                                   title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
                                 >
-                                  <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                                  <span className="text-[7.5px] opacity-70 leading-none truncate max-w-full px-0.5 font-bold">
+                                  <X className="w-3.5 h-3.5 stroke-[3] text-white" />
+                                  <span className="text-[7.5px] text-white/90 leading-none truncate max-w-full px-0.5 font-bold">
                                     {col.subfolder.replace(/Week\s+/i, 'W').slice(0, 4)}
                                   </span>
                                 </button>
@@ -345,23 +356,25 @@ export default function SubmissionMatrix({
                             const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
                             const isLate = statusInfo.isLate;
 
+                            // Late: Solid Baby Yellow/Amber with White L
+                            // On Time: Solid Baby Green with White Check ✓
                             return (
                               <button
                                 key={col.key}
                                 onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
                                 className={`flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg flex flex-col items-center justify-center font-extrabold text-[10px] transition-all shadow-2xs border cursor-pointer hover:scale-105 ${
                                   isLate
-                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
-                                    : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
+                                    ? 'bg-[#f6ad55] hover:bg-[#ed8936] text-white border-[#ed8936]'
+                                    : 'bg-[#48bb78] hover:bg-[#38a169] text-white border-[#38a169]'
                                 }`}
                                 title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: ${isLate ? `Late (${statusInfo.label})` : 'Submitted On Time'}\nFile: ${firstFile?.name || ''}\nUploaded: ${firstFile?.date || ''}`}
                               >
                                 {isLate ? (
-                                  <span className="text-[10px] font-black text-amber-800 leading-none">L</span>
+                                  <span className="text-[10.5px] font-black text-white leading-none">L</span>
                                 ) : (
-                                  <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-700 leading-none" />
+                                  <Check className="w-3.5 h-3.5 stroke-[3] text-white leading-none" />
                                 )}
-                                <span className="text-[7.5px] opacity-70 leading-none truncate max-w-full px-0.5 font-bold">
+                                <span className="text-[7.5px] text-white/90 leading-none truncate max-w-full px-0.5 font-bold">
                                   {col.subfolder.replace(/Week\s+/i, 'W').slice(0, 4)}
                                 </span>
                               </button>
@@ -375,12 +388,12 @@ export default function SubmissionMatrix({
                   {/* Completion Rate Progress */}
                   <div className="w-20 shrink-0 text-right pl-2">
                     <div className="flex flex-col items-end">
-                      <span className={`text-xs font-extrabold ${pct === 100 ? 'text-emerald-700' : pct >= 75 ? 'text-blue-700' : 'text-amber-700'}`}>
+                      <span className={`text-xs font-extrabold ${pct === 100 ? 'text-[#48bb78]' : pct >= 75 ? 'text-blue-700' : 'text-[#f6ad55]'}`}>
                         {pct}%
                       </span>
                       <div className="w-14 bg-gray-200 rounded-full h-1.5 mt-0.5 overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : pct >= 75 ? 'bg-google-blue' : 'bg-amber-500'}`}
+                          className={`h-full rounded-full ${pct === 100 ? 'bg-[#48bb78]' : pct >= 75 ? 'bg-google-blue' : 'bg-[#f6ad55]'}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -433,10 +446,10 @@ export default function SubmissionMatrix({
 
                     <span className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold shrink-0 border ${
                       pct === 100
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        ? 'bg-[#48bb78] text-white border-[#38a169]'
                         : pct >= 60
                         ? 'bg-blue-50 text-blue-800 border-blue-200'
-                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-[#f6ad55] text-white border-[#ed8936]'
                     }`}>
                       {pct}% Done
                     </span>
@@ -445,7 +458,7 @@ export default function SubmissionMatrix({
                   {/* Progress Bar */}
                   <div className="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden border border-gray-200">
                     <div
-                      className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-google-blue'}`}
+                      className={`h-full rounded-full ${pct === 100 ? 'bg-[#48bb78]' : 'bg-google-blue'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -470,7 +483,7 @@ export default function SubmissionMatrix({
 
                               if (!cellData) {
                                 return (
-                                  <span key={col.key} className="px-2 py-0.5 rounded bg-gray-100 text-gray-400 text-[10px] font-medium">
+                                  <span key={col.key} className="px-2 py-0.5 rounded bg-gray-200 text-gray-400 text-[10px] font-bold">
                                     {col.subfolder}: —
                                   </span>
                                 );
@@ -481,9 +494,9 @@ export default function SubmissionMatrix({
                                   <button
                                     key={col.key}
                                     onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate: false, statusInfo: { label: 'Empty' } })}
-                                    className="px-2 py-0.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-200 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                                    className="px-2 py-0.5 rounded bg-[#f56565] hover:bg-[#e53e3e] text-white border border-[#e53e3e] text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                                   >
-                                    <XCircle className="w-3 h-3 text-rose-600" />
+                                    <X className="w-3 h-3 stroke-[3] text-white" />
                                     <span>{col.subfolder}: Empty</span>
                                   </button>
                                 );
@@ -500,14 +513,14 @@ export default function SubmissionMatrix({
                                   onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-2xs border ${
                                     isLate
-                                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
-                                      : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
+                                      ? 'bg-[#f6ad55] hover:bg-[#ed8936] text-white border-[#ed8936]'
+                                      : 'bg-[#48bb78] hover:bg-[#38a169] text-white border-[#38a169]'
                                   }`}
                                 >
                                   {isLate ? (
-                                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                    <span className="text-[10px] font-black text-white leading-none">L</span>
                                   ) : (
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <Check className="w-3 h-3 stroke-[3] text-white" />
                                   )}
                                   <span>{col.subfolder}</span>
                                 </button>
@@ -522,8 +535,8 @@ export default function SubmissionMatrix({
 
                 {/* Card Footer Summary */}
                 <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500 font-semibold">
-                  <span className="text-emerald-700 font-bold">✓ {submittedCount} Submitted</span>
-                  <span className="text-rose-700 font-bold">✕ {emptyCount} Missing</span>
+                  <span className="text-[#48bb78] font-bold">✓ {submittedCount} Submitted</span>
+                  <span className="text-[#f56565] font-bold">✕ {emptyCount} Missing</span>
                 </div>
 
               </div>
@@ -634,10 +647,10 @@ export default function SubmissionMatrix({
                       return (
                         <td key={col.key} className="py-2 px-2 text-center border-r border-gray-200 bg-rose-50/30">
                           <span
-                            className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                            className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#f56565] text-white border border-[#e53e3e] shadow-2xs"
                             title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
                           >
-                            <XCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                            <X className="w-3 h-3 stroke-[3] text-white shrink-0" />
                             <span>Empty</span>
                           </span>
                         </td>
@@ -661,18 +674,18 @@ export default function SubmissionMatrix({
                         <div className="flex flex-col items-center justify-center">
                           {isLate ? (
                             <span
-                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-100/80 text-amber-900 border border-amber-300 shadow-2xs"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border border-[#ed8936] shadow-2xs"
                               title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nUploaded late (${statusInfo.daysLate} working days late)`}
                             >
-                              <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span className="text-[10px] font-black text-white leading-none">L</span>
                               <span>{statusInfo.label}</span>
                             </span>
                           ) : (
                             <span
-                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-100/80 text-emerald-900 border border-emerald-300 shadow-2xs"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#48bb78] text-white border border-[#38a169] shadow-2xs"
                               title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nSubmitted on time`}
                             >
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <Check className="w-3 h-3 stroke-[3] text-white shrink-0" />
                               <span>{cellData.files.length === 1 ? '1 file' : `${cellData.files.length} files`}</span>
                             </span>
                           )}
@@ -688,12 +701,12 @@ export default function SubmissionMatrix({
                   })}
 
                   {/* Submitted Total Count */}
-                  <td className="py-3 px-3 text-center border-r border-gray-200 font-bold text-emerald-700 bg-emerald-50/20">
+                  <td className="py-3 px-3 text-center border-r border-gray-200 font-bold text-[#48bb78] bg-emerald-50/20">
                     {row.submittedCount}
                   </td>
 
                   {/* Empty Folders Count */}
-                  <td className="py-3 px-3 text-center font-bold text-rose-700 bg-rose-50/20">
+                  <td className="py-3 px-3 text-center font-bold text-[#f56565] bg-rose-50/20">
                     {row.emptyCount}
                   </td>
 
@@ -707,17 +720,17 @@ export default function SubmissionMatrix({
       {/* Footer Legend */}
       <div className="p-3.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1.5 font-medium text-emerald-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <span>Green = On Time</span>
+          <div className="flex items-center space-x-1.5 font-bold text-gray-800">
+            <span className="w-3.5 h-3.5 rounded bg-[#48bb78] flex items-center justify-center text-white text-[9px] font-black">✓</span>
+            <span>Solid Baby Green = On Time</span>
           </div>
-          <div className="flex items-center space-x-1.5 font-bold text-amber-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-            <span>L = Late</span>
+          <div className="flex items-center space-x-1.5 font-bold text-gray-800">
+            <span className="w-3.5 h-3.5 rounded bg-[#f6ad55] flex items-center justify-center text-white text-[9px] font-black">L</span>
+            <span>Solid Baby Yellow = Late</span>
           </div>
-          <div className="flex items-center space-x-1.5 font-medium text-rose-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            <span>Empty = Missing</span>
+          <div className="flex items-center space-x-1.5 font-bold text-gray-800">
+            <span className="w-3.5 h-3.5 rounded bg-[#f56565] flex items-center justify-center text-white text-[9px] font-black">✕</span>
+            <span>Solid Baby Red = Missing</span>
           </div>
         </div>
 
@@ -739,8 +752,20 @@ export default function SubmissionMatrix({
             </button>
 
             <div className="flex items-center space-x-3 mb-3">
-              <div className={`p-2.5 rounded-xl ${selectedCell.isLate ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                {selectedCell.isLate ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+              <div className={`p-2.5 rounded-xl ${
+                selectedCell.isLate
+                  ? 'bg-[#f6ad55] text-white'
+                  : selectedCell.cellData.isFolderEmpty
+                  ? 'bg-[#f56565] text-white'
+                  : 'bg-[#48bb78] text-white'
+              }`}>
+                {selectedCell.isLate ? (
+                  <span className="text-sm font-black">L</span>
+                ) : selectedCell.cellData.isFolderEmpty ? (
+                  <X className="w-5 h-5 stroke-[3]" />
+                ) : (
+                  <Check className="w-5 h-5 stroke-[3]" />
+                )}
               </div>
               <div>
                 <h4 className="text-sm font-bold text-gray-900">{selectedCell.student}</h4>
@@ -756,15 +781,15 @@ export default function SubmissionMatrix({
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">Submission Status:</span>
                 {selectedCell.isLate ? (
-                  <span className="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+                  <span className="font-bold text-white bg-[#f6ad55] px-2.5 py-0.5 rounded-lg border border-[#ed8936] shadow-2xs">
                     {selectedCell.statusInfo.label}
                   </span>
                 ) : selectedCell.cellData.isFolderEmpty ? (
-                  <span className="font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
+                  <span className="font-bold text-white bg-[#f56565] px-2.5 py-0.5 rounded-lg border border-[#e53e3e] shadow-2xs">
                     ✕ Missing / Empty
                   </span>
                 ) : (
-                  <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="font-bold text-white bg-[#48bb78] px-2.5 py-0.5 rounded-lg border border-[#38a169] shadow-2xs">
                     ✓ On Time
                   </span>
                 )}
