@@ -1,10 +1,31 @@
 import { formatBytes, formatDate } from '../utils/driveUrlParser';
 
 /**
- * Google Drive API v3 Client for recursive folder auditing
+ * Google Drive API v3 Client for fast, recursive folder auditing with parallel concurrency
  */
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
+const CONCURRENCY_LIMIT = 8; // Process 8 folders concurrently in parallel
+
+/**
+ * Helper to run async tasks in parallel with a concurrency pool
+ */
+async function mapConcurrent(items, limit, fn) {
+  const results = [];
+  const executing = [];
+  for (const item of items) {
+    const p = Promise.resolve().then(() => fn(item));
+    results.push(p);
+    if (limit <= items.length) {
+      const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+      executing.push(e);
+      if (executing.length >= limit) {
+        await Promise.race(executing);
+      }
+    }
+  }
+  return Promise.all(results);
+}
 
 /**
  * Fetch folder details by ID
@@ -61,7 +82,7 @@ export async function listFolderChildren(folderId, accessToken, abortSignal = nu
 }
 
 /**
- * Recursively scan Google Drive folder structure up to maxDepth
+ * Recursively scan Google Drive folder structure up to maxDepth with parallel processing
  */
 export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, progressCallback = null, abortSignal = null) {
   const rootMeta = await getFolderMetadata(rootFolderId, accessToken, abortSignal);
@@ -78,7 +99,7 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
 
   const submitterEmails = new Set();
 
-  // Recursive tree crawler
+  // Recursive tree crawler with parallel subfolder execution
   async function crawlFolder(currentFolderId, currentPath, currentDepth, studentName = '') {
     if (abortSignal?.aborted) {
       throw new DOMException('Scan cancelled by user', 'AbortError');
@@ -160,17 +181,18 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
       folderStats.emptyFoldersCount++;
     }
 
-    // Recurse into subfolders if within maxDepth
-    if (currentDepth < maxDepth) {
-      for (const sf of subfolders) {
+    // Recurse into subfolders concurrently up to maxDepth
+    if (currentDepth < maxDepth && subfolders.length > 0) {
+      const childNodes = await mapConcurrent(subfolders, CONCURRENCY_LIMIT, async (sf) => {
         if (abortSignal?.aborted) {
           throw new DOMException('Scan cancelled by user', 'AbortError');
         }
         const nextStudent = (currentDepth === 1) ? sf.name.replace(/ - (Major|Computer|Assignment).*$/, '').trim() : studentName;
         const sfPath = `${currentPath} > ${sf.name}`;
-        const childNode = await crawlFolder(sf.id, sfPath, currentDepth + 1, nextStudent);
-        treeNode.children.push(childNode);
-      }
+        return await crawlFolder(sf.id, sfPath, currentDepth + 1, nextStudent);
+      });
+
+      treeNode.children.push(...childNodes);
     }
 
     return treeNode;
