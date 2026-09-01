@@ -7,11 +7,16 @@ export const DEFAULT_SEMESTER_START = '2026-06-08'; // Monday June 8, 2026
 /**
  * Generate 18 weeks of date ranges and deadlines based on a start date (Monday to Friday, excluding Sat/Sun)
  * @param {string} startDateString - ISO YYYY-MM-DD string for Semester Week 1 Monday
+ * @param {number} defaultHours - Default deadline hour (default: 23 for 11:59 PM)
+ * @param {number} defaultMinutes - Default deadline minute (default: 59)
  * @returns {Array} Array of 18 week objects
  */
-export function generateDefaultWeekRanges(startDateString = DEFAULT_SEMESTER_START) {
+export function generateDefaultWeekRanges(startDateString = DEFAULT_SEMESTER_START, defaultHours = 23, defaultMinutes = 59) {
   const weeks = [];
-  const start = new Date(startDateString);
+  
+  // Parse YYYY-MM-DD cleanly in local timezone
+  const parts = startDateString.split('-');
+  const start = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0);
 
   for (let i = 1; i <= 18; i++) {
     // Week start is Monday
@@ -22,7 +27,7 @@ export function generateDefaultWeekRanges(startDateString = DEFAULT_SEMESTER_STA
     // Week end is Friday (+4 days from Monday), excluding Saturday and Sunday
     const weekFriday = new Date(weekStart);
     weekFriday.setDate(weekStart.getDate() + 4);
-    weekFriday.setHours(23, 59, 59, 999);
+    weekFriday.setHours(defaultHours, defaultMinutes, 59, 999);
 
     const weekName = `Week ${i}`;
 
@@ -31,13 +36,69 @@ export function generateDefaultWeekRanges(startDateString = DEFAULT_SEMESTER_STA
       name: weekName,
       startDateIso: weekStart.toISOString(),
       endDateIso: weekFriday.toISOString(),
-      deadlineIso: weekFriday.toISOString(), // Default deadline is Friday 23:59
+      deadlineIso: weekFriday.toISOString(),
+      dateString: formatDateInput(weekFriday),
+      timeString: format12HourTime(defaultHours, defaultMinutes),
       formattedRange: `${formatShortDate(weekStart)} - ${formatShortDate(weekFriday)}`,
       formattedDeadline: formatShortDateTime(weekFriday)
     });
   }
 
   return weeks;
+}
+
+/**
+ * Formats a Date object to YYYY-MM-DD for date inputs
+ */
+export function formatDateInput(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Formats hours (0-23) and minutes (0-59) to 12-hour AM/PM string (e.g. "11:59 PM")
+ */
+export function format12HourTime(hours, minutes) {
+  const h = hours % 12 || 12;
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const m = String(minutes).padStart(2, '0');
+  const hStr = String(h).padStart(2, '0');
+  return `${hStr}:${m} ${ampm}`;
+}
+
+/**
+ * Parses user input like "11:59 pm", "5:00 pm", "17:00", "23:59" into { hours, minutes }
+ */
+export function parseTimeString(timeStr) {
+  if (!timeStr) return { hours: 23, minutes: 59 };
+  const clean = timeStr.trim().toLowerCase();
+
+  const match12 = clean.match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/i);
+  if (match12) {
+    let h = parseInt(match12[1], 10);
+    const m = match12[2] ? parseInt(match12[2], 10) : 0;
+    const isPm = match12[3]?.toLowerCase() === 'pm';
+    const isAm = match12[3]?.toLowerCase() === 'am';
+
+    if (isPm && h < 12) h += 12;
+    if (isAm && h === 12) h = 0;
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      return { hours: h, minutes: m };
+    }
+  }
+
+  const match24 = clean.match(/^(\d{1,2}):(\d{2})$/);
+  if (match24) {
+    const h = parseInt(match24[1], 10);
+    const m = parseInt(match24[2], 10);
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      return { hours: h, minutes: m };
+    }
+  }
+
+  return { hours: 23, minutes: 59 };
 }
 
 /**
@@ -64,9 +125,6 @@ export function countBusinessDaysLate(deadlineDate, fileDate) {
 
 /**
  * Check if a file submission is On Time or Late (L), excluding weekends
- * @param {string} fileTimestampIso - ISO date string of file upload/modified
- * @param {string} deadlineIso - ISO date string of target week deadline
- * @returns {Object} { status: 'ON_TIME'|'LATE', label: string, isLate: boolean, daysLate: number }
  */
 export function getSubmissionStatus(fileTimestampIso, deadlineIso) {
   if (!fileTimestampIso || !deadlineIso) {
@@ -85,7 +143,6 @@ export function getSubmissionStatus(fileTimestampIso, deadlineIso) {
     };
   }
 
-  // Calculate working/business days late (excluding weekends)
   const daysLate = countBusinessDaysLate(deadlineDate, fileDate);
 
   return {
