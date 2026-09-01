@@ -95,10 +95,10 @@ export default function Navbar({
               <button
                 onClick={onLogin}
                 className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-google-blue hover:bg-google-hover focus:ring-2 focus:ring-google-blue focus:ring-offset-1 transition-all shadow-sm cursor-pointer"
-                title="Sign in with school account rathanit@limkokwing.edu.kh"
+                title="Sign in with your Google Account"
               >
                 <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign in (rathanit@limkokwing.edu.kh)</span>
+                <span className="hidden sm:inline">Sign in with Google</span>
                 <span className="sm:hidden">Sign In</span>
               </button>
             )}

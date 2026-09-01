@@ -2,8 +2,6 @@
  * Google OAuth 2.0 Identity Services wrapper with resilient script loading & on-demand initialization
  */
 
-export const TARGET_EMAIL = 'rathanit@limkokwing.edu.kh';
-
 let tokenClient = null;
 let savedClientId = null;
 let savedOnTokenReceived = null;
@@ -96,7 +94,7 @@ export function initGoogleAuth(clientId, onTokenReceived, onError) {
   }
 }
 
-export function requestGoogleLogin(emailHint = TARGET_EMAIL) {
+export function requestGoogleLogin() {
   if (!tokenClient && savedClientId) {
     initGoogleAuth(savedClientId, savedOnTokenReceived, savedOnError);
   }
@@ -105,14 +103,8 @@ export function requestGoogleLogin(emailHint = TARGET_EMAIL) {
     throw new Error('Google OAuth Client ID is not initialized yet. Please check your network connection or Client ID settings.');
   }
 
-  const options = { prompt: 'select_account' };
-  const targetHint = (typeof emailHint === 'string' && emailHint.trim()) ? emailHint.trim() : TARGET_EMAIL;
-  
-  if (targetHint) {
-    options.hint = targetHint;
-  }
-
-  tokenClient.requestAccessToken(options);
+  // Pure standard prompt: asks the user which Google account they want to use!
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
 export function logoutGoogle() {
