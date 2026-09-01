@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Check, RotateCcw } from 'lucide-react';
 import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START } from '../utils/weekDeadlineManager';
 
@@ -14,6 +14,22 @@ export default function DeadlineSettingsModal({ isOpen, onClose, semesterStartDa
     }
     return baseWeeks;
   });
+
+  // Keep synced whenever opened or props change
+  useEffect(() => {
+    if (isOpen) {
+      const baseWeeks = generateDefaultWeekRanges(semesterStartDate || DEFAULT_SEMESTER_START);
+      if (customDeadlines && Object.keys(customDeadlines).length > 0) {
+        setLocalWeeks(baseWeeks.map(w => ({
+          ...w,
+          deadlineIso: customDeadlines[w.name] || w.deadlineIso
+        })));
+      } else {
+        setLocalWeeks(baseWeeks);
+      }
+      setStartDate(semesterStartDate || DEFAULT_SEMESTER_START);
+    }
+  }, [isOpen, semesterStartDate, customDeadlines]);
 
   if (!isOpen) return null;
 
@@ -69,7 +85,9 @@ export default function DeadlineSettingsModal({ isOpen, onClose, semesterStartDa
           </div>
           <div>
             <h3 className="text-lg font-bold text-gray-900">Semester Schedule & Deadlines (Week 1 - 18)</h3>
-            <p className="text-xs text-gray-500">Configure weekly date ranges and set due dates for late submission (L) detection.</p>
+            <p className="text-xs text-gray-500">
+              Monday &ndash; Friday working week (excluding Saturdays &amp; Sundays) for late submission (L) detection.
+            </p>
           </div>
         </div>
 
@@ -93,7 +111,7 @@ export default function DeadlineSettingsModal({ isOpen, onClose, semesterStartDa
             className="text-xs text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-1"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Default (Jun 8, 2026)</span>
+            <span>Reset Default (Mon Jun 8, 2026)</span>
           </button>
         </div>
 
@@ -108,7 +126,7 @@ export default function DeadlineSettingsModal({ isOpen, onClose, semesterStartDa
                 <div key={w.name} className="p-2.5 bg-white border border-gray-200 rounded-xl text-xs flex items-center justify-between shadow-2xs">
                   <div>
                     <div className="font-bold text-gray-900">{w.name}</div>
-                    <div className="text-[10px] text-gray-500">{w.formattedRange}</div>
+                    <div className="text-[10px] text-gray-500 font-medium">{w.formattedRange} (Mon-Fri)</div>
                   </div>
 
                   <div className="flex items-center space-x-1">
