@@ -3,7 +3,7 @@ import {
   CheckCircle2, XCircle, Download, Search, Info, Clock, AlertTriangle, ExternalLink,
   User, Folder, ChevronRight, X, LayoutGrid, Table, CreditCard, Filter, ChevronDown, Check
 } from 'lucide-react';
-import { exportMatrixToCSV } from '../utils/csvExporter';
+import { exportMatrixToExcel } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
 const CATEGORY_THEMES = [
@@ -152,14 +152,14 @@ export default function SubmissionMatrix({
             </button>
           </div>
 
-          {/* Export CSV button */}
+          {/* Export Excel (.xlsx) button */}
           <button
-            onClick={() => exportMatrixToCSV(matrixRows, visibleFlattenedCols, rootFolderName, weekDeadlines)}
-            className="px-3 py-1.5 bg-[#48bb78] hover:bg-[#38a169] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-colors"
-            title="Download clean matrix report as CSV/Excel (Main Folder, Subfolder, Submitted, Late, Empty)"
+            onClick={() => exportMatrixToExcel(matrixRows, visibleFlattenedCols, rootFolderName, weekDeadlines)}
+            className="px-3.5 py-1.5 bg-[#48bb78] hover:bg-[#38a169] text-white rounded-xl text-xs font-black flex items-center space-x-1.5 shadow-sm transition-all"
+            title="Download formatted Excel (.xlsx) report with colors and merged headers"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
+            <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Export Excel (.xlsx)</span>
           </button>
         </div>
       </div>
