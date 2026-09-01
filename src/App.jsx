@@ -18,9 +18,14 @@ const DEFAULT_CLIENT_ID = '668113678070-o2ifl6k4encmi4na97r6mkgbjcrmirtm.apps.go
 
 export default function App() {
   // App state
-  const [clientId, setClientId] = useState(
-    localStorage.getItem('google_oauth_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID
-  );
+  const [clientId, setClientId] = useState(() => {
+    const saved = localStorage.getItem('google_oauth_client_id');
+    if (!saved || saved.includes('973292062953')) {
+      localStorage.setItem('google_oauth_client_id', DEFAULT_CLIENT_ID);
+      return DEFAULT_CLIENT_ID;
+    }
+    return saved;
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDeadlinesOpen, setIsDeadlinesOpen] = useState(false);
   const [user, setUser] = useState(getCurrentUser());
