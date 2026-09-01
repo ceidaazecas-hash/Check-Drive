@@ -205,8 +205,8 @@ export default function App() {
         isScanning={isScanning}
       />
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main Container - 100% Full Width */}
+      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 py-6">
         
         {/* Drive URL Input & Progress Bar */}
         <DriveUrlInput
