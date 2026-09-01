@@ -78,6 +78,12 @@ export async function getFolderMetadata(folderId, accessToken, abortSignal = nul
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      const err = new Error('Your Google session has expired. Please click Sign In to refresh your access.');
+      err.status = 401;
+      err.isAuthError = true;
+      throw err;
+    }
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error?.message || `Failed to fetch folder (Status ${res.status}). Check permissions or folder ID.`);
   }
@@ -108,6 +114,12 @@ export async function listFolderChildren(folderId, accessToken, abortSignal = nu
     });
 
     if (!res.ok) {
+      if (res.status === 401) {
+        const err = new Error('Your Google session has expired. Please click Sign In to refresh your access.');
+        err.status = 401;
+        err.isAuthError = true;
+        throw err;
+      }
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error?.message || `Failed listing files in folder ${folderId}`);
     }

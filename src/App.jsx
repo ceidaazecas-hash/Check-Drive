@@ -8,7 +8,7 @@ import FolderTreeView from './components/FolderTreeView';
 import ClientIdModal from './components/ClientIdModal';
 import DeadlineSettingsModal from './components/DeadlineSettingsModal';
 
-import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCurrentUser } from './services/googleAuth';
+import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCurrentUser, isTokenExpired, setAccessToken } from './services/googleAuth';
 import { scanDriveFolder } from './services/driveApi';
 import { extractDriveFolderId } from './utils/driveUrlParser';
 import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START } from './utils/weekDeadlineManager';
@@ -149,8 +149,11 @@ export default function App() {
       return;
     }
 
-    if (!accessToken) {
-      setScanError('Google authentication required. Click "Sign in with Google" to authorize access.');
+    const currentToken = getAccessToken() || accessToken;
+    if (!currentToken || isTokenExpired()) {
+      setAccessToken(null);
+      setAccessTokenState(null);
+      setScanError('Your Google login session has expired. Click "Sign in with Google" to renew access.');
       handleGoogleLogin();
       return;
     }
@@ -168,7 +171,7 @@ export default function App() {
     try {
       const result = await scanDriveFolder(
         folderId,
-        accessToken,
+        currentToken,
         scanDepth,
         (progressInfo) => {
           setScanProgress(progressInfo);
@@ -182,6 +185,13 @@ export default function App() {
         return;
       }
       console.error('Scan Error:', err);
+      if (err.isAuthError || err.status === 401 || err.message?.includes('invalid authentication credentials') || err.message?.includes('Invalid Credentials') || err.message?.includes('UNAUTHENTICATED')) {
+        setAccessToken(null);
+        setAccessTokenState(null);
+        setScanError('Your Google session has expired. Click "Sign In with Google" below to renew your access.');
+        handleGoogleLogin();
+        return;
+      }
       setScanError(err.message || 'An error occurred while scanning the Google Drive folder. Please check your folder link and permissions.');
     } finally {
       setIsScanning(false);
@@ -224,14 +234,24 @@ export default function App() {
 
         {/* Global Error Banner */}
         {scanError && (
-          <div className="bg-red-50 border border-red-200 text-red-800 text-xs sm:text-sm p-4 rounded-xl mb-6 flex items-center justify-between shadow-sm">
-            <span>{scanError}</span>
-            <button
-              onClick={() => setScanError('')}
-              className="text-red-500 hover:text-red-700 font-bold ml-2"
-            >
-              &times;
-            </button>
+          <div className="bg-red-50 text-red-900 text-xs sm:text-sm p-4 rounded-2xl mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs border-0">
+            <span className="font-bold">{scanError}</span>
+            <div className="flex items-center space-x-2 shrink-0">
+              {(!accessToken || scanError.includes('session has expired') || scanError.includes('authentication') || scanError.includes('Sign In')) && (
+                <button
+                  onClick={handleGoogleLogin}
+                  className="px-3.5 py-1.5 bg-google-blue hover:bg-google-hover text-white rounded-xl text-xs font-black shadow-xs border-0"
+                >
+                  Sign in with Google
+                </button>
+              )}
+              <button
+                onClick={() => setScanError('')}
+                className="text-red-500 hover:text-red-700 font-black px-2 py-1"
+              >
+                &times;
+              </button>
+            </div>
           </div>
         )}
 

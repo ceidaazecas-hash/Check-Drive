@@ -8,9 +8,21 @@ let savedOnTokenReceived = null;
 let savedOnError = null;
 
 let accessToken = localStorage.getItem('google_drive_access_token') || null;
+let tokenExpiresAt = Number(localStorage.getItem('google_drive_token_expires_at')) || 0;
 let currentUser = JSON.parse(localStorage.getItem('google_drive_user') || 'null');
 
+export function isTokenExpired() {
+  if (!accessToken) return true;
+  if (!tokenExpiresAt) return false;
+  // If less than 60 seconds left, treat as expired
+  return Date.now() >= (tokenExpiresAt - 60000);
+}
+
 export function getAccessToken() {
+  if (isTokenExpired()) {
+    setAccessToken(null, 0);
+    return null;
+  }
   return accessToken;
 }
 
@@ -18,12 +30,16 @@ export function getCurrentUser() {
   return currentUser;
 }
 
-export function setAccessToken(token) {
+export function setAccessToken(token, expiresInSeconds = 3600) {
   accessToken = token;
   if (token) {
+    tokenExpiresAt = Date.now() + (expiresInSeconds * 1000);
     localStorage.setItem('google_drive_access_token', token);
+    localStorage.setItem('google_drive_token_expires_at', tokenExpiresAt.toString());
   } else {
+    tokenExpiresAt = 0;
     localStorage.removeItem('google_drive_access_token');
+    localStorage.removeItem('google_drive_token_expires_at');
   }
 }
 
@@ -41,7 +57,6 @@ export function initGoogleAuth(clientId, onTokenReceived, onError) {
   // Check if Google GSI library is loaded
   if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
     console.warn('Google Identity Services script loading... retrying initialization.');
-    // Poll until window.google is ready
     const checkInterval = setInterval(() => {
       if (window.google && window.google.accounts && window.google.accounts.oauth2) {
         clearInterval(checkInterval);
@@ -63,7 +78,8 @@ export function initGoogleAuth(clientId, onTokenReceived, onError) {
         }
 
         const token = response.access_token;
-        setAccessToken(token);
+        const expiresIn = response.expires_in ? Number(response.expires_in) : 3600;
+        setAccessToken(token, expiresIn);
 
         // Fetch User Info
         try {
