@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { getSubmissionStatus } from './weekDeadlineManager';
+import { cleanStudentFolderName } from '../services/driveApi';
 
 /**
  * Export audit files to CSV
@@ -192,7 +193,7 @@ export async function exportMatrixToExcel(matrixData, columnItems, rootFolderNam
       excelRow.height = isDetailed ? 48 : 22;
 
       const nameCell = ws.getCell(rowNumber, 1);
-      nameCell.value = row.studentName;
+      nameCell.value = cleanStudentFolderName(row.studentName);
       Object.assign(nameCell, {
         font: EXCEL_STYLES.studentName.font,
         alignment: EXCEL_STYLES.studentName.alignment,

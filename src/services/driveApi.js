@@ -4,6 +4,27 @@ import { formatBytes, formatDate } from '../utils/driveUrlParser';
  * High-Speed Google Drive API v3 Batch Crawler with Multi-Parent Batching & Hierarchical Milestone Grouping
  */
 
+/**
+ * Clean student folder name by removing course codes, majors, or trailing hyphens
+ * e.g. "Seng Hour - Interaction Design & UX/UI" -> "Seng Hour"
+ * e.g. "Seng Vichea - - Interaction Design & UX/UI" -> "Seng Vichea"
+ */
+export function cleanStudentFolderName(rawName) {
+  if (!rawName || typeof rawName !== 'string') return '';
+  let cleaned = rawName.trim();
+  
+  // 1. Split on hyphens / dashes like " - ", " - - ", " -- ", " – ", " — "
+  const splitParts = cleaned.split(/\s*[-–—]+\s*/);
+  if (splitParts.length > 1 && splitParts[0].trim().length > 1) {
+    cleaned = splitParts[0].trim();
+  }
+  
+  // 2. Strip any trailing course parentheticals like (Interaction Design) or [UX/UI]
+  cleaned = cleaned.replace(/\s*[\(\[\{].*?[\)\]\}]/g, '').trim();
+  
+  return cleaned || rawName;
+}
+
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 
 /**
@@ -178,7 +199,7 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
         const itemPath = `${parentPath} > ${item.name}`;
         
         const studentName = (depth === 1)
-          ? item.name.replace(/ - (Major|Computer|Assignment).*$/, '').trim()
+          ? cleanStudentFolderName(item.name)
           : parentStudent;
 
         const folderNode = {
@@ -324,7 +345,7 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
 
   for (const studentFolder of firstLevelFolders) {
     const rawStudentName = studentFolder.name;
-    const cleanStudentName = rawStudentName.replace(/ - (Major Project|Computer Application|June|Semester|\d).*$/i, '').trim() || rawStudentName;
+    const cleanStudentName = cleanStudentFolderName(rawStudentName);
     
     const studentSubmissions = {};
     let studentSubmittedCount = 0;
