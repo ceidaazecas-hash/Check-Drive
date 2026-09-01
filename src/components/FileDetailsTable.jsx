@@ -222,8 +222,7 @@ export default function FileDetailsTable({ files, rootFolderName, weekDeadlines 
                     {/* Status Badge */}
                     <td className="py-3 px-4 text-center">
                       {statusInfo.isLate ? (
-                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border border-[#ed8936] shadow-2xs">
-                          <span className="font-black text-white text-[10px]">L</span>
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-[#f6ad55] text-white border-0 shadow-2xs">
                           <span>{statusInfo.label}</span>
                         </span>
                       ) : (

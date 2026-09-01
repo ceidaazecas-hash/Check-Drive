@@ -369,10 +369,9 @@ export default function SubmissionMatrix({
                           {/* Solid Status Badge */}
                           {isLate ? (
                             <span
-                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border-0 shadow-2xs"
+                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-[#f6ad55] text-white border-0 shadow-2xs"
                               title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nUploaded late (${statusInfo.daysLate} working days late)`}
                             >
-                              <span className="text-[10px] font-black text-white leading-none">L</span>
                               <span>{statusInfo.label}</span>
                             </span>
                           ) : (
