@@ -6,12 +6,13 @@ import {
 import { exportMatrixToExcel } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
 
-const CATEGORY_THEMES = [
-  { name: 'blue', bg: 'bg-blue-50/90', headerBg: 'bg-blue-100/80', border: 'border-blue-200', text: 'text-blue-900', tileContainer: 'bg-blue-50/40 border-blue-200/60' },
-  { name: 'purple', bg: 'bg-purple-50/90', headerBg: 'bg-purple-100/80', border: 'border-purple-200', text: 'text-purple-900', tileContainer: 'bg-purple-50/40 border-purple-200/60' },
-  { name: 'emerald', bg: 'bg-emerald-50/90', headerBg: 'bg-emerald-100/80', border: 'border-emerald-200', text: 'text-emerald-900', tileContainer: 'bg-emerald-50/40 border-emerald-200/60' },
-  { name: 'amber', bg: 'bg-amber-50/90', headerBg: 'bg-amber-100/80', border: 'border-amber-200', text: 'text-amber-900', tileContainer: 'bg-amber-50/40 border-amber-200/60' },
-  { name: 'indigo', bg: 'bg-indigo-50/90', headerBg: 'bg-indigo-100/80', border: 'border-indigo-200', text: 'text-indigo-900', tileContainer: 'bg-indigo-50/40 border-indigo-200/60' }
+const SOLID_CATEGORY_THEMES = [
+  { name: 'purple', solidBg: 'bg-[#805ad5]', hoverBg: 'hover:bg-[#6b46c1]', tileContainer: 'bg-purple-50/50 border-purple-200/60' },
+  { name: 'pink', solidBg: 'bg-[#d53f8c]', hoverBg: 'hover:bg-[#b83280]', tileContainer: 'bg-pink-50/50 border-pink-200/60' },
+  { name: 'teal', solidBg: 'bg-[#319795]', hoverBg: 'hover:bg-[#234e52]', tileContainer: 'bg-teal-50/50 border-teal-200/60' },
+  { name: 'orange', solidBg: 'bg-[#dd6b20]', hoverBg: 'hover:bg-[#c05621]', tileContainer: 'bg-orange-50/50 border-orange-200/60' },
+  { name: 'indigo', solidBg: 'bg-[#4c51bf]', hoverBg: 'hover:bg-[#3c366b]', tileContainer: 'bg-indigo-50/50 border-indigo-200/60' },
+  { name: 'cyan', solidBg: 'bg-[#008080]', hoverBg: 'hover:bg-[#005555]', tileContainer: 'bg-cyan-50/50 border-cyan-200/60' }
 ];
 
 export default function SubmissionMatrix({
@@ -119,7 +120,7 @@ export default function SubmissionMatrix({
 
           {/* Table Detail Density Toggle (when in Full Table view) */}
           {layoutMode === 'table' && (
-            <div className="flex items-center bg-gray-200/80 p-0.5 rounded-xl text-xs font-bold border border-gray-300/60 shadow-2xs">
+            <div className="flex items-center bg-gray-200/80 p-0.5 rounded-xl text-xs font-bold border-0 shadow-2xs">
               <button
                 onClick={() => setTableDetailMode('compact')}
                 className={`px-2.5 py-1 rounded-lg transition-all ${tableDetailMode === 'compact' ? 'bg-white text-google-blue shadow-2xs font-extrabold' : 'text-gray-600 hover:text-gray-900'}`}
@@ -145,7 +146,7 @@ export default function SubmissionMatrix({
           )}
 
           {/* Layout Mode Selector (Zero Scroll Heatmap, Cards, Table) */}
-          <div className="flex items-center bg-gray-200/80 p-0.5 rounded-xl text-xs font-bold border border-gray-300/60 shadow-2xs">
+          <div className="flex items-center bg-gray-200/80 p-0.5 rounded-xl text-xs font-bold border-0 shadow-2xs">
             <button
               onClick={() => setLayoutMode('table')}
               className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
@@ -183,7 +184,7 @@ export default function SubmissionMatrix({
           {/* Export Excel (.xlsx) button */}
           <button
             onClick={() => exportMatrixToExcel(matrixRows, visibleFlattenedCols, rootFolderName, weekDeadlines)}
-            className="px-3.5 py-1.5 bg-[#48bb78] hover:bg-[#38a169] text-white rounded-xl text-xs font-black flex items-center space-x-1.5 shadow-sm transition-all"
+            className="px-3.5 py-1.5 bg-[#48bb78] hover:bg-[#38a169] text-white rounded-xl text-xs font-black flex items-center space-x-1.5 shadow-sm transition-all border-0"
             title="Download formatted Excel (.xlsx) with Summary and Detailed (Files & Time) sheets"
           >
             <Download className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -192,39 +193,45 @@ export default function SubmissionMatrix({
         </div>
       </div>
 
-      {/* Category Filter Pills */}
+      {/* Category Filter Pills (Solid Filled Buttons, No Outline) */}
       {groups.length > 1 && (
-        <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-1.5 overflow-x-auto text-xs">
-          <span className="text-gray-500 font-semibold mr-1 flex items-center gap-1">
+        <div className="px-4 py-3 bg-gray-50/90 border-b border-gray-200 flex items-center gap-2 overflow-x-auto text-xs">
+          <span className="text-gray-500 font-bold mr-1 flex items-center gap-1 shrink-0">
             <Filter className="w-3.5 h-3.5 text-gray-400" />
-            Category Filter:
+            Category:
           </span>
+
+          {/* All Folders Button - Solid Blue */}
           <button
             onClick={() => setActiveCategoryFilter('all')}
-            className={`px-3 py-1 rounded-xl font-bold transition-all text-xs ${
+            className={`px-3.5 py-1.5 rounded-xl font-extrabold transition-all text-xs shrink-0 border-0 shadow-2xs ${
               activeCategoryFilter === 'all'
-                ? 'bg-google-blue text-white shadow-2xs'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                ? 'bg-[#1a73e8] text-white shadow-sm ring-2 ring-blue-300'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
             All Folders ({visibleFlattenedCols.length})
           </button>
+
+          {/* Individual Category Buttons - Solid Colors, No Outline */}
           {groups.map((g, idx) => {
-            const theme = CATEGORY_THEMES[idx % CATEGORY_THEMES.length];
+            const theme = SOLID_CATEGORY_THEMES[idx % SOLID_CATEGORY_THEMES.length];
             const isSelected = activeCategoryFilter === g.categoryName;
             return (
               <button
                 key={g.categoryName}
                 onClick={() => setActiveCategoryFilter(g.categoryName)}
-                className={`px-3 py-1 rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 border ${
+                className={`px-3.5 py-1.5 rounded-xl font-extrabold transition-all text-xs flex items-center gap-1.5 shrink-0 border-0 shadow-2xs text-white ${theme.solidBg} ${theme.hoverBg} ${
                   isSelected
-                    ? 'bg-gray-900 text-white border-gray-900 shadow-2xs'
-                    : `${theme.bg} ${theme.text} ${theme.border} hover:opacity-80`
+                    ? 'ring-2 ring-gray-900 shadow-md scale-105'
+                    : 'opacity-85 hover:opacity-100'
                 }`}
               >
-                <Folder className="w-3 h-3 opacity-70" />
+                <Folder className="w-3.5 h-3.5 text-white/90" />
                 <span>{g.categoryName}</span>
-                <span className="opacity-60 text-[11px]">({g.columns.length})</span>
+                <span className="bg-white/20 text-white px-1.5 py-0.2 rounded-md text-[10px] font-black">
+                  {g.columns.length}
+                </span>
               </button>
             );
           })}
@@ -239,7 +246,7 @@ export default function SubmissionMatrix({
           <table className="w-full text-left border-collapse min-w-[950px]">
             <thead className="sticky top-0 z-20 shadow-xs">
               
-              {/* Tier 1: Parent Category Headers */}
+              {/* Tier 1: Parent Category Headers (Solid colored headers) */}
               <tr className="border-b border-gray-200 text-xs font-extrabold tracking-wide uppercase">
                 <th
                   rowSpan={2}
@@ -249,25 +256,25 @@ export default function SubmissionMatrix({
                 </th>
 
                 {visibleGroups.map((group, gIdx) => {
-                  const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
+                  const theme = SOLID_CATEGORY_THEMES[gIdx % SOLID_CATEGORY_THEMES.length];
                   return (
                     <th
                       key={group.categoryName}
                       colSpan={group.columns.length}
-                      className={`py-2.5 px-3 border-r border-gray-200 text-center ${theme.bg} ${theme.text} font-black tracking-wider text-[11px] border-b-2 ${theme.border}`}
+                      className={`py-2.5 px-3 border-r border-white/20 text-center ${theme.solidBg} text-white font-black tracking-wider text-[11px]`}
                     >
                       <div className="flex items-center justify-center space-x-1.5">
-                        <Folder className="w-3.5 h-3.5 opacity-70" />
+                        <Folder className="w-3.5 h-3.5 text-white/90" />
                         <span>{group.categoryName}</span>
                       </div>
                     </th>
                   );
                 })}
 
-                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-emerald-50 text-emerald-900 font-bold align-middle border-r border-gray-200">
+                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-[#48bb78] text-white font-black align-middle border-r border-gray-200">
                   Submitted
                 </th>
-                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-rose-50 text-rose-900 font-bold align-middle">
+                <th rowSpan={2} className="py-3 px-3 text-center min-w-[85px] bg-[#f56565] text-white font-black align-middle">
                   Empty
                 </th>
               </tr>
@@ -333,7 +340,7 @@ export default function SubmissionMatrix({
                       return (
                         <td key={col.key} className="py-2.5 px-2 text-center border-r border-gray-200 bg-rose-50/30">
                           <span
-                            className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#f56565] text-white border border-[#e53e3e] shadow-2xs"
+                            className="inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#f56565] text-white border-0 shadow-2xs"
                             title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
                           >
                             <X className="w-3 h-3 stroke-[3] text-white shrink-0" />
@@ -362,7 +369,7 @@ export default function SubmissionMatrix({
                           {/* Solid Status Badge */}
                           {isLate ? (
                             <span
-                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border border-[#ed8936] shadow-2xs"
+                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#f6ad55] text-white border-0 shadow-2xs"
                               title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nUploaded late (${statusInfo.daysLate} working days late)`}
                             >
                               <span className="text-[10px] font-black text-white leading-none">L</span>
@@ -370,7 +377,7 @@ export default function SubmissionMatrix({
                             </span>
                           ) : (
                             <span
-                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#48bb78] text-white border border-[#38a169] shadow-2xs"
+                              className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#48bb78] text-white border-0 shadow-2xs"
                               title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nSubmitted on time`}
                             >
                               <Check className="w-3 h-3 stroke-[3] text-white shrink-0" />
@@ -441,15 +448,15 @@ export default function SubmissionMatrix({
               {/* Grouped Parent Category Blocks */}
               <div className="flex-1 flex items-center justify-end gap-2">
                 {visibleGroups.map((group, gIdx) => {
-                  const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
+                  const theme = SOLID_CATEGORY_THEMES[gIdx % SOLID_CATEGORY_THEMES.length];
                   return (
                     <div
                       key={group.categoryName}
                       style={{ flex: group.columns.length }}
-                      className={`py-1 px-2 rounded-lg border ${theme.headerBg} ${theme.border} ${theme.text} text-[11px] font-black text-center truncate flex items-center justify-center gap-1 shadow-2xs`}
+                      className={`py-1 px-2 rounded-lg border-0 ${theme.solidBg} text-white text-[11px] font-black text-center truncate flex items-center justify-center gap-1 shadow-2xs`}
                       title={`Main Folder: ${group.categoryName} (${group.columns.length} subfolders)`}
                     >
-                      <Folder className="w-3 h-3 opacity-75 shrink-0" />
+                      <Folder className="w-3 h-3 text-white/90 shrink-0" />
                       <span className="truncate">{group.categoryName}</span>
                     </div>
                   );
@@ -530,7 +537,7 @@ export default function SubmissionMatrix({
                   {/* Category Grouped Milestone Tiles */}
                   <div className="flex-1 flex items-center justify-end gap-2">
                     {visibleGroups.map((group, gIdx) => {
-                      const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
+                      const theme = SOLID_CATEGORY_THEMES[gIdx % SOLID_CATEGORY_THEMES.length];
                       return (
                         <div
                           key={group.categoryName}
@@ -559,7 +566,7 @@ export default function SubmissionMatrix({
                                 <button
                                   key={col.key}
                                   onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate: false, statusInfo: { label: 'Empty' } })}
-                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-[#f56565] hover:bg-[#e53e3e] border border-[#e53e3e] flex flex-col items-center justify-center text-white font-extrabold text-[10px] transition-all shadow-2xs cursor-pointer hover:scale-105"
+                                  className="flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg bg-[#f56565] hover:bg-[#e53e3e] border-0 flex flex-col items-center justify-center text-white font-extrabold text-[10px] transition-all shadow-2xs cursor-pointer hover:scale-105"
                                   title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: EMPTY (0 files uploaded)`}
                                 >
                                   <X className="w-3.5 h-3.5 stroke-[3] text-white" />
@@ -582,10 +589,10 @@ export default function SubmissionMatrix({
                               <button
                                 key={col.key}
                                 onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
-                                className={`flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg flex flex-col items-center justify-center font-extrabold text-[10px] transition-all shadow-2xs border cursor-pointer hover:scale-105 ${
+                                className={`flex-1 min-w-[20px] max-w-[40px] h-8 rounded-lg flex flex-col items-center justify-center font-extrabold text-[10px] transition-all shadow-2xs border-0 cursor-pointer hover:scale-105 ${
                                   isLate
-                                    ? 'bg-[#f6ad55] hover:bg-[#ed8936] text-white border-[#ed8936]'
-                                    : 'bg-[#48bb78] hover:bg-[#38a169] text-white border-[#38a169]'
+                                    ? 'bg-[#f6ad55] hover:bg-[#ed8936] text-white'
+                                    : 'bg-[#48bb78] hover:bg-[#38a169] text-white'
                                 }`}
                                 title={`📂 Main Folder: ${col.category}\n📁 Subfolder: ${col.subfolder}\nStatus: ${isLate ? `Late (${statusInfo.label})` : 'Submitted On Time'}\nFile: ${firstFile?.name || ''}\nUploaded: ${firstFile?.date || ''}`}
                               >
@@ -664,12 +671,12 @@ export default function SubmissionMatrix({
                       </div>
                     </div>
 
-                    <span className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold shrink-0 border ${
+                    <span className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold shrink-0 border-0 ${
                       pct === 100
-                        ? 'bg-[#48bb78] text-white border-[#38a169]'
+                        ? 'bg-[#48bb78] text-white'
                         : pct >= 60
-                        ? 'bg-blue-50 text-blue-800 border-blue-200'
-                        : 'bg-[#f6ad55] text-white border-[#ed8936]'
+                        ? 'bg-blue-50 text-blue-800'
+                        : 'bg-[#f6ad55] text-white'
                     }`}>
                       {pct}% Done
                     </span>
@@ -686,12 +693,12 @@ export default function SubmissionMatrix({
                   {/* Category Breakdown Badges */}
                   <div className="space-y-2">
                     {visibleGroups.map((group, gIdx) => {
-                      const theme = CATEGORY_THEMES[gIdx % CATEGORY_THEMES.length];
+                      const theme = SOLID_CATEGORY_THEMES[gIdx % SOLID_CATEGORY_THEMES.length];
                       return (
-                        <div key={group.categoryName} className={`p-2.5 rounded-xl border ${theme.bg} ${theme.border}`}>
-                          <div className="text-[10px] font-extrabold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                            <span className="flex items-center gap-1">
-                              <Folder className="w-3 h-3 opacity-70" />
+                        <div key={group.categoryName} className="p-2.5 rounded-xl bg-gray-50 border border-gray-200">
+                          <div className="text-[10px] font-extrabold text-white uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span className={`px-2 py-0.5 rounded-md ${theme.solidBg} flex items-center gap-1`}>
+                              <Folder className="w-3 h-3 text-white/90" />
                               <span>{group.categoryName}</span>
                             </span>
                           </div>
@@ -714,7 +721,7 @@ export default function SubmissionMatrix({
                                   <button
                                     key={col.key}
                                     onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate: false, statusInfo: { label: 'Empty' } })}
-                                    className="px-2 py-0.5 rounded bg-[#f56565] hover:bg-[#e53e3e] text-white border border-[#e53e3e] text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                                    className="px-2 py-0.5 rounded bg-[#f56565] hover:bg-[#e53e3e] text-white border-0 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                                   >
                                     <X className="w-3 h-3 stroke-[3] text-white" />
                                     <span>{col.subfolder}: Empty</span>
@@ -731,10 +738,10 @@ export default function SubmissionMatrix({
                                 <button
                                   key={col.key}
                                   onClick={() => setSelectedCell({ student: row.studentName, category: col.category, subfolder: col.subfolder, cellData, isLate, statusInfo })}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-2xs border ${
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-2xs border-0 ${
                                     isLate
-                                      ? 'bg-[#f6ad55] hover:bg-[#ed8936] text-white border-[#ed8936]'
-                                      : 'bg-[#48bb78] hover:bg-[#38a169] text-white border-[#38a169]'
+                                      ? 'bg-[#f6ad55] hover:bg-[#ed8936] text-white'
+                                      : 'bg-[#48bb78] hover:bg-[#38a169] text-white'
                                   }`}
                                 >
                                   {isLate ? (
@@ -829,15 +836,15 @@ export default function SubmissionMatrix({
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">Submission Status:</span>
                 {selectedCell.isLate ? (
-                  <span className="font-bold text-white bg-[#f6ad55] px-2.5 py-0.5 rounded-lg border border-[#ed8936] shadow-2xs">
+                  <span className="font-bold text-white bg-[#f6ad55] px-2.5 py-0.5 rounded-lg border-0 shadow-2xs">
                     {selectedCell.statusInfo.label}
                   </span>
                 ) : selectedCell.cellData.isFolderEmpty ? (
-                  <span className="font-bold text-white bg-[#f56565] px-2.5 py-0.5 rounded-lg border border-[#e53e3e] shadow-2xs">
+                  <span className="font-bold text-white bg-[#f56565] px-2.5 py-0.5 rounded-lg border-0 shadow-2xs">
                     ✕ Missing / Empty
                   </span>
                 ) : (
-                  <span className="font-bold text-white bg-[#48bb78] px-2.5 py-0.5 rounded-lg border border-[#38a169] shadow-2xs">
+                  <span className="font-bold text-white bg-[#48bb78] px-2.5 py-0.5 rounded-lg border-0 shadow-2xs">
                     ✓ On Time
                   </span>
                 )}
