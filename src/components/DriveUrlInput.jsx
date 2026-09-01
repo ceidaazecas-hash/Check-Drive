@@ -39,13 +39,13 @@ export default function DriveUrlInput({
     setErrorMsg('');
   };
 
-  // Parse progress info (can be object or string)
-  const currentPathText = typeof scanProgress === 'object' && scanProgress?.currentPath
+  // Parse progress info (can be object, string, or null)
+  const currentPathText = scanProgress && typeof scanProgress === 'object' && scanProgress.currentPath
     ? scanProgress.currentPath
     : (typeof scanProgress === 'string' ? scanProgress : 'Analyzing folder hierarchy...');
 
-  const foldersCount = typeof scanProgress === 'object' ? scanProgress.foldersScanned : null;
-  const filesCount = typeof scanProgress === 'object' ? scanProgress.filesFound : null;
+  const foldersCount = scanProgress && typeof scanProgress === 'object' ? (scanProgress.foldersScanned ?? null) : null;
+  const filesCount = scanProgress && typeof scanProgress === 'object' ? (scanProgress.filesFound ?? null) : null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm mb-6">
