@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { exportMatrixToExcel } from '../utils/csvExporter';
 import { getSubmissionStatus } from '../utils/weekDeadlineManager';
+import { formatDate } from '../utils/driveUrlParser';
 
 const SOLID_CATEGORY_THEMES = [
   { name: 'purple', solidBg: 'bg-[#805ad5]', hoverBg: 'hover:bg-[#6b46c1]', tileContainer: 'bg-purple-50/50 border-purple-200/60' },
@@ -352,9 +353,10 @@ export default function SubmissionMatrix({
 
                     // Check if files are late
                     const firstFile = cellData.files[0];
-                    const fileDateIso = firstFile?.dateIso || firstFile?.date;
+                    const fileDateIso = firstFile?.dateIso || firstFile?.date || firstFile?.time;
                     const statusInfo = getSubmissionStatus(fileDateIso, deadlineIso);
                     const isLate = statusInfo.isLate;
+                    const uploadTimeFormatted = firstFile?.date || firstFile?.time || (firstFile?.dateIso ? formatDate(firstFile.dateIso) : '');
 
                     return (
                       <td
@@ -400,10 +402,10 @@ export default function SubmissionMatrix({
                           )}
 
                           {/* Standard & Detailed View: Upload Date & Time */}
-                          {tableDetailMode !== 'compact' && firstFile?.date && (
-                            <span className="text-[9px] text-gray-500 font-mono mt-1 whitespace-nowrap flex items-center gap-1">
-                              <Clock className="w-2.5 h-2.5 text-gray-400" />
-                              <span>{firstFile.date}</span>
+                          {tableDetailMode !== 'compact' && uploadTimeFormatted && (
+                            <span className="text-[9px] text-gray-500 font-mono mt-1 whitespace-nowrap flex items-center justify-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-gray-400 shrink-0" />
+                              <span>{uploadTimeFormatted.replace(/, 202\d/, '')}</span>
                             </span>
                           )}
 

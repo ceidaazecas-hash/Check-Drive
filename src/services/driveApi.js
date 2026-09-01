@@ -260,7 +260,8 @@ export async function scanDriveFolder(rootFolderId, accessToken, maxDepth = 4, p
             name: item.name,
             type: 'file',
             owner: ownerName,
-            time: formatDate(item.modifiedTime),
+            time: formatDate(item.modifiedTime || item.createdTime),
+            date: formatDate(item.modifiedTime || item.createdTime),
             dateIso: item.modifiedTime || item.createdTime,
             size: processedFile.formattedSize,
             webViewLink: processedFile.webViewLink
