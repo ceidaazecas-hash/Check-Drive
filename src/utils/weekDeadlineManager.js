@@ -2,7 +2,8 @@
  * Week Date Range and Deadline Manager (Week 1 through Week 18)
  * Supports:
  * - 1 Class per Week (Due on class day, Friday, Sunday, or custom day)
- * - 2 Classes per Week for the same module (Due on 1st class, 2nd class, or weekend)
+ * - 2 Classes per Week for the same module (Displays BOTH class dates for every week!)
+ * - Direct selection of all 7 days for Class 1 & Class 2 (Mon, Tue, Wed, Thu, Fri, Sat, Sun)
  * - Custom individual week overrides
  * - Business days late calculation
  */
@@ -49,7 +50,7 @@ export function formatDateInput(dateObj) {
 }
 
 /**
- * Formats hours (0-23) and minutes (0-59) to 12-hour AM/PM string (e.g. "11:59 PM")
+ * Formats hours (0-23) and minutes (0-59) to 12-hour AM/PM string (e.g. "05:00 PM")
  */
 export function format12HourTime(hours, minutes) {
   const h = hours % 12 || 12;
@@ -63,7 +64,7 @@ export function format12HourTime(hours, minutes) {
  * Parses user input like "11:59 pm", "5:00 pm", "17:00", "23:59" into { hours, minutes }
  */
 export function parseTimeString(timeStr) {
-  if (!timeStr) return { hours: 23, minutes: 59 };
+  if (!timeStr) return { hours: 17, minutes: 0 };
   const clean = timeStr.trim().toLowerCase();
 
   const match12 = clean.match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/i);
@@ -89,67 +90,101 @@ export function parseTimeString(timeStr) {
     }
   }
 
-  return { hours: 23, minutes: 59 };
+  return { hours: 17, minutes: 0 };
 }
 
 /**
- * Calculate 18 weeks of deadlines with smart support for:
- * - 1 class per week (due on class day, Friday, Sunday, or custom day)
- * - 2 classes per week (due on 1st class, 2nd class, or weekend)
+ * Find the Monday of the week for any given date
  */
-export function calculateWeekDeadlines({
+export function getWeekMonday(dateObj) {
+  const d = dateObj.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const diff = d === 0 ? -6 : 1 - d;
+  const mon = new Date(dateObj);
+  mon.setDate(dateObj.getDate() + diff);
+  mon.setHours(0, 0, 0, 0);
+  return mon;
+}
+
+/**
+ * Given a week's Monday, get the specific day of that week (0 = Sun, 1 = Mon ... 6 = Sat)
+ */
+export function getDayInWeek(mon, dayOfWeek) {
+  const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const target = new Date(mon);
+  target.setDate(mon.getDate() + offset);
+  return target;
+}
+
+/**
+ * Calculate 18 weeks of complete class schedules and deadlines
+ * Accurately computes BOTH class dates for modules with 2 classes per week!
+ */
+export function calculateSemesterSchedule({
   startDateString = DEFAULT_SEMESTER_START,
-  dueRule = 'same_day', // 'same_day', '2nd_class', 'friday', 'sunday', 'custom_day'
-  secondClassOffset = 2, // e.g. +2 days (Wed->Fri) or +3 days (Mon->Thu, Tue->Fri)
-  customTargetDay = 5,   // 0 = Sun, 1 = Mon, ..., 5 = Fri
-  defaultHours = 17,     // Default 5:00 PM or 11:59 PM
+  classesPerWeek = 2,
+  class1Day = 1, // 1 = Monday
+  class2Day = 3, // 3 = Wednesday
+  dueTarget = 'class2', // 'class1', 'class2', 'sunday', 'friday'
+  defaultHours = 17,
   defaultMinutes = 0
 }) {
   const weeks = [];
   const start = parseLocalDate(startDateString || DEFAULT_SEMESTER_START);
-  const startDayOfWeek = start.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-
-  // Determine deadline day offset from week's 1st class
-  let offsetDays = 0;
-  if (dueRule === 'same_day') {
-    offsetDays = 0;
-  } else if (dueRule === '2nd_class') {
-    offsetDays = Number(secondClassOffset) || 2;
-  } else if (dueRule === 'friday') {
-    offsetDays = (5 - startDayOfWeek + 7) % 7;
-  } else if (dueRule === 'sunday') {
-    offsetDays = (7 - startDayOfWeek) % 7;
-    if (offsetDays === 0 && startDayOfWeek !== 0) offsetDays = 7;
-    if (startDayOfWeek === 0) offsetDays = 0;
-  } else if (dueRule === 'custom_day') {
-    offsetDays = (customTargetDay - startDayOfWeek + 7) % 7;
-  }
+  const week1Monday = getWeekMonday(start);
 
   for (let i = 1; i <= 18; i++) {
-    const weekStart = new Date(start);
-    weekStart.setDate(start.getDate() + (i - 1) * 7);
-    weekStart.setHours(0, 0, 0, 0);
+    const weekMon = new Date(week1Monday);
+    weekMon.setDate(week1Monday.getDate() + (i - 1) * 7);
 
-    const deadlineDate = new Date(weekStart);
-    deadlineDate.setDate(weekStart.getDate() + offsetDays);
+    const class1Date = getDayInWeek(weekMon, class1Day);
+    const class2Date = classesPerWeek === 2 ? getDayInWeek(weekMon, class2Day) : null;
+
+    let deadlineDate;
+    if (classesPerWeek === 2 && class2Date) {
+      if (dueTarget === 'class1') {
+        deadlineDate = new Date(class1Date);
+      } else if (dueTarget === 'class2') {
+        deadlineDate = new Date(class2Date);
+      } else if (dueTarget === 'sunday') {
+        deadlineDate = getDayInWeek(weekMon, 0); // Sunday
+      } else if (dueTarget === 'friday') {
+        deadlineDate = getDayInWeek(weekMon, 5); // Friday
+      } else {
+        deadlineDate = new Date(class2Date);
+      }
+    } else {
+      if (dueTarget === 'sunday') {
+        deadlineDate = getDayInWeek(weekMon, 0);
+      } else if (dueTarget === 'friday') {
+        deadlineDate = getDayInWeek(weekMon, 5);
+      } else {
+        deadlineDate = new Date(class1Date);
+      }
+    }
+
     deadlineDate.setHours(defaultHours, defaultMinutes, 59, 999);
 
-    const weekName = `Week ${i}`;
     const dateStr = formatDateInput(deadlineDate);
     const timeStr = format12HourTime(defaultHours, defaultMinutes);
     const dayName = deadlineDate.toLocaleDateString('en-US', { weekday: 'short' });
 
     weeks.push({
       weekNumber: i,
-      name: weekName,
-      startDateIso: weekStart.toISOString(),
+      name: `Week ${i}`,
+      class1DateString: formatDateInput(class1Date),
+      class1Formatted: class1Date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      class2DateString: class2Date ? formatDateInput(class2Date) : null,
+      class2Formatted: class2Date ? class2Date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null,
+      startDateIso: class1Date.toISOString(),
       endDateIso: deadlineDate.toISOString(),
       endDate: deadlineDate.toISOString(), // Alias for safety
       deadlineIso: deadlineDate.toISOString(),
       dateString: dateStr,
       timeString: timeStr,
       dayOfWeek: dayName,
-      formattedRange: `${formatShortDate(weekStart)} (${dayName})`,
+      formattedRange: classesPerWeek === 2 && class2Date
+        ? `${class1Date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} & ${class2Date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+        : `${class1Date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`,
       formattedDeadline: formatShortDateTime(deadlineDate)
     });
   }
@@ -158,23 +193,32 @@ export function calculateWeekDeadlines({
 }
 
 /**
- * Standard generator function compatible with all components
+ * Standard generator for 18 weeks compatible with all matrix components
  */
 export function generateDefaultWeekRanges(
   startDateString = DEFAULT_SEMESTER_START,
-  defaultHours = 23,
-  defaultMinutes = 59,
-  dueRule = 'same_day',
-  secondClassOffset = 2
+  defaultHours = 17,
+  defaultMinutes = 0,
+  classesPerWeek = 2,
+  class1Day = 1,
+  class2Day = 3,
+  dueTarget = 'class2'
 ) {
-  return calculateWeekDeadlines({
+  return calculateSemesterSchedule({
     startDateString,
-    dueRule,
-    secondClassOffset,
+    classesPerWeek,
+    class1Day,
+    class2Day,
+    dueTarget,
     defaultHours,
     defaultMinutes
   });
 }
+
+/**
+ * Backward compatibility alias
+ */
+export const calculateWeekDeadlines = calculateSemesterSchedule;
 
 /**
  * Count business days late (excluding Saturdays and Sundays)
