@@ -11,7 +11,7 @@ import DeadlineSettingsModal from './components/DeadlineSettingsModal';
 import { initGoogleAuth, requestGoogleLogin, logoutGoogle, getAccessToken, getCurrentUser, isTokenExpired, setAccessToken, getValidAccessToken } from './services/googleAuth';
 import { scanDriveFolder } from './services/driveApi';
 import { extractDriveFolderId } from './utils/driveUrlParser';
-import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START } from './utils/weekDeadlineManager';
+import { generateDefaultWeekRanges, DEFAULT_SEMESTER_START, formatDateInput } from './utils/weekDeadlineManager';
 // No icons imported
 
 const DEFAULT_CLIENT_ID = '668113678070-o2ifl6k4encmi4na97r6mkgbjcrmirtm.apps.googleusercontent.com';
@@ -57,10 +57,26 @@ export default function App() {
   // Cancellation controller ref
   const abortControllerRef = useRef(null);
 
-  // Calculate 18 weeks of date ranges
+  // Calculate 18 weeks of date ranges and integrate custom deadlines
   const weekRanges = useMemo(() => {
-    return generateDefaultWeekRanges(semesterStartDate);
-  }, [semesterStartDate]);
+    const base = generateDefaultWeekRanges(semesterStartDate);
+    return base.map(w => {
+      const customIso = customDeadlines[w.name];
+      if (customIso) {
+        const d = new Date(customIso);
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return {
+          ...w,
+          deadlineIso: customIso,
+          dateString: formatDateInput(d),
+          dayOfWeek: dayName,
+          formattedRange: `${monthDay} (${dayName})`
+        };
+      }
+      return w;
+    });
+  }, [semesterStartDate, customDeadlines]);
 
   // Combine default deadlines with custom deadline overrides
   const weekDeadlines = useMemo(() => {

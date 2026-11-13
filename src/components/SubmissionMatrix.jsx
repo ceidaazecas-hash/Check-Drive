@@ -315,7 +315,7 @@ export default function SubmissionMatrix({
                     {/* Hierarchical Column Cells */}
                     {visibleFlattenedCols.map(col => {
                       const cellData = row.submissions[col.key];
-                      const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
+                      const deadlineIso = weekDeadlines[col.key] || weekDeadlines[col.subfolder] || weekDeadlines[col.category];
 
                       if (!cellData) {
                         return (
@@ -538,7 +538,7 @@ export default function SubmissionMatrix({
                         >
                           {group.columns.map(col => {
                             const cellData = row.submissions[col.key];
-                            const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
+                            const deadlineIso = weekDeadlines[col.key] || weekDeadlines[col.subfolder] || weekDeadlines[col.category];
 
                             if (!cellData) {
                               return (
@@ -699,7 +699,7 @@ export default function SubmissionMatrix({
                           <div className="flex flex-wrap gap-1.5 justify-center">
                             {group.columns.map(col => {
                               const cellData = row.submissions[col.key];
-                              const deadlineIso = weekDeadlines[col.subfolder] || weekDeadlines[col.category];
+                              const deadlineIso = weekDeadlines[col.key] || weekDeadlines[col.subfolder] || weekDeadlines[col.category];
 
                               if (!cellData) {
                                 return (
